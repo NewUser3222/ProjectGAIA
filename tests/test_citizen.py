@@ -89,7 +89,55 @@ class TestCitizen(unittest.TestCase):
             "Citizen died."
         )
 
+    # Step 14: Test initial citizen needs
+    def test_initial_needs(self):
+        citizen = Citizen("CIT-001", "Alex")
 
-# Step 14: Run the tests
+        self.assertEqual(citizen.needs["food"], 100)
+        self.assertEqual(citizen.needs["water"], 100)
+        self.assertEqual(citizen.needs["shelter"], 100)
+        self.assertEqual(citizen.needs["energy"], 100)
+
+    # Step 15: Test changing a citizen's need
+    def test_change_need(self):
+        citizen = Citizen("CIT-001", "Alex")
+
+        citizen.change_need("food", -25)
+
+        self.assertEqual(citizen.needs["food"], 75)
+
+    # Step 16: Test that needs cannot exceed 100
+    def test_need_upper_limit(self):
+        citizen = Citizen("CIT-001", "Alex")
+
+        citizen.change_need("food", 50)
+
+        self.assertEqual(citizen.needs["food"], 100)
+
+    # Step 17: Test that needs cannot fall below 0
+    def test_need_lower_limit(self):
+        citizen = Citizen("CIT-001", "Alex")
+
+        citizen.change_need("food", -150)
+
+        self.assertEqual(citizen.needs["food"], 0)
+
+    # Step 18: Test retrieving a need
+    def test_get_need(self):
+        citizen = Citizen("CIT-001", "Alex")
+
+        citizen.change_need("water", -30)
+
+        self.assertEqual(citizen.get_need("water"), 70)
+
+    # Step 19: Test invalid need names
+    def test_invalid_need(self):
+        citizen = Citizen("CIT-001", "Alex")
+
+        with self.assertRaises(ValueError):
+            citizen.change_need("happiness", -10)
+
+
+# Step 20: Run the tests
 if __name__ == "__main__":
     unittest.main()
