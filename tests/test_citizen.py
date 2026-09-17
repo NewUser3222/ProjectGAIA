@@ -59,7 +59,37 @@ class TestCitizen(unittest.TestCase):
         self.assertEqual(citizen.lifecycle_state, DEAD)
         self.assertFalse(citizen.is_alive())
 
+    # Step 11: Test initial citizen history
+    def test_initial_history(self):
+        citizen = Citizen("CIT-001", "Alex")
 
-# Step 11: Run the tests
+        self.assertEqual(len(citizen.history), 1)
+        self.assertEqual(citizen.history[0], "Citizen created.")
+
+    # Step 12: Test recording a history event
+    def test_record_history(self):
+        citizen = Citizen("CIT-001", "Alex")
+
+        citizen.record_history("Moved to (10, 15).")
+
+        self.assertEqual(len(citizen.history), 2)
+        self.assertEqual(
+            citizen.history[1],
+            "Moved to (10, 15)."
+        )
+
+    # Step 13: Test that death is recorded in history
+    def test_death_is_recorded(self):
+        citizen = Citizen("CIT-001", "Alex")
+
+        citizen.die()
+
+        self.assertEqual(
+            citizen.history[-1],
+            "Citizen died."
+        )
+
+
+# Step 14: Run the tests
 if __name__ == "__main__":
     unittest.main()
