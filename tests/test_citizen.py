@@ -2,8 +2,8 @@
 import unittest
 
 
-# Step 2: Import the Citizen entity
-from src.gaia.agents.citizen import Citizen
+# Step 2: Import the Citizen entity and lifecycle states
+from src.gaia.agents.citizen import Citizen, ALIVE, DEAD
 
 
 # Step 3: Define Citizen tests
@@ -43,7 +43,23 @@ class TestCitizen(unittest.TestCase):
         self.assertEqual(citizen.age, 0)
         self.assertEqual(citizen.location, (0, 0))
 
+    # Step 9: Test that citizens start alive
+    def test_initial_lifecycle_state(self):
+        citizen = Citizen("CIT-001", "Alex")
 
-# Step 9: Run the tests
+        self.assertEqual(citizen.lifecycle_state, ALIVE)
+        self.assertTrue(citizen.is_alive())
+
+    # Step 10: Test that a citizen can die
+    def test_citizen_death(self):
+        citizen = Citizen("CIT-001", "Alex")
+
+        citizen.die()
+
+        self.assertEqual(citizen.lifecycle_state, DEAD)
+        self.assertFalse(citizen.is_alive())
+
+
+# Step 11: Run the tests
 if __name__ == "__main__":
     unittest.main()
