@@ -21,14 +21,23 @@ class Citizen:
             "energy": 100
         }
 
-        # Step 4: Record the citizen's creation
+        # Step 4: Define the citizen's personality
+        self.personality = {
+            "sociability": 50,
+            "curiosity": 50,
+            "ambition": 50,
+            "cooperation": 50,
+            "risk_tolerance": 50
+        }
+
+        # Step 5: Record the citizen's creation
         self.record_history("Citizen created.")
 
-    # Step 5: Record a citizen history event
+    # Step 6: Record a citizen history event
     def record_history(self, event):
         self.history.append(event)
 
-    # Step 6: Change a citizen's need level
+    # Step 7: Change a citizen's need level
     def change_need(self, need_name, amount):
         if need_name not in self.needs:
             raise ValueError(f"Unknown need: {need_name}")
@@ -37,24 +46,40 @@ class Citizen:
 
         self.needs[need_name] = max(0, min(100, new_value))
 
-    # Step 7: Get a citizen's current need level
+    # Step 8: Get a citizen's current need level
     def get_need(self, need_name):
         if need_name not in self.needs:
             raise ValueError(f"Unknown need: {need_name}")
 
         return self.needs[need_name]
 
-    # Step 8: Mark the citizen as deceased
+    # Step 9: Change a citizen's personality trait
+    def change_personality(self, trait_name, amount):
+        if trait_name not in self.personality:
+            raise ValueError(f"Unknown personality trait: {trait_name}")
+
+        new_value = self.personality[trait_name] + amount
+
+        self.personality[trait_name] = max(0, min(100, new_value))
+
+    # Step 10: Get a citizen's personality trait
+    def get_personality(self, trait_name):
+        if trait_name not in self.personality:
+            raise ValueError(f"Unknown personality trait: {trait_name}")
+
+        return self.personality[trait_name]
+
+    # Step 11: Mark the citizen as deceased
     def die(self):
         self.lifecycle_state = DEAD
         self.record_history("Citizen died.")
 
-    # Step 9: Check whether the citizen is alive
+    # Step 12: Check whether the citizen is alive
     def is_alive(self):
         return self.lifecycle_state == ALIVE
 
 
-# Step 10: Run a basic citizen test
+# Step 13: Run a basic citizen test
 if __name__ == "__main__":
     citizen = Citizen(
         "CIT-001",
@@ -67,6 +92,8 @@ if __name__ == "__main__":
 
     citizen.change_need("food", -25)
 
+    citizen.change_personality("curiosity", 20)
+
     print(f"Citizen ID: {citizen.citizen_id}")
     print(f"Citizen name: {citizen.name}")
     print(f"Citizen age: {citizen.age}")
@@ -74,4 +101,6 @@ if __name__ == "__main__":
     print(f"Lifecycle state: {citizen.lifecycle_state}")
     print(f"Needs: {citizen.needs}")
     print(f"Food need: {citizen.get_need('food')}")
+    print(f"Personality: {citizen.personality}")
+    print(f"Curiosity: {citizen.get_personality('curiosity')}")
     print(f"History: {citizen.history}")

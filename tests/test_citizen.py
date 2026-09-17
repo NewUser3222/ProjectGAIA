@@ -137,7 +137,56 @@ class TestCitizen(unittest.TestCase):
         with self.assertRaises(ValueError):
             citizen.change_need("happiness", -10)
 
+    # Step 20: Test initial personality traits
+    def test_initial_personality(self):
+        citizen = Citizen("CIT-001", "Alex")
 
-# Step 20: Run the tests
+        self.assertEqual(citizen.personality["sociability"], 50)
+        self.assertEqual(citizen.personality["curiosity"], 50)
+        self.assertEqual(citizen.personality["ambition"], 50)
+        self.assertEqual(citizen.personality["cooperation"], 50)
+        self.assertEqual(citizen.personality["risk_tolerance"], 50)
+
+    # Step 21: Test changing a personality trait
+    def test_change_personality(self):
+        citizen = Citizen("CIT-001", "Alex")
+
+        citizen.change_personality("curiosity", 20)
+
+        self.assertEqual(citizen.personality["curiosity"], 70)
+
+    # Step 22: Test that personality traits cannot exceed 100
+    def test_personality_upper_limit(self):
+        citizen = Citizen("CIT-001", "Alex")
+
+        citizen.change_personality("ambition", 75)
+
+        self.assertEqual(citizen.personality["ambition"], 100)
+
+    # Step 23: Test that personality traits cannot fall below 0
+    def test_personality_lower_limit(self):
+        citizen = Citizen("CIT-001", "Alex")
+
+        citizen.change_personality("risk_tolerance", -75)
+
+        self.assertEqual(citizen.personality["risk_tolerance"], 0)
+
+    # Step 24: Test retrieving a personality trait
+    def test_get_personality(self):
+        citizen = Citizen("CIT-001", "Alex")
+
+        citizen.change_personality("sociability", 15)
+
+        self.assertEqual(citizen.get_personality("sociability"), 65)
+
+    # Step 25: Test invalid personality traits
+    def test_invalid_personality(self):
+        citizen = Citizen("CIT-001", "Alex")
+
+        with self.assertRaises(ValueError):
+            citizen.change_personality("kindness", 10)
+
+
+# Step 26: Run the tests
 if __name__ == "__main__":
     unittest.main()
