@@ -24,7 +24,26 @@ class TestCitizen(unittest.TestCase):
         self.assertNotEqual(citizen_one.citizen_id, citizen_two.citizen_id)
         self.assertNotEqual(citizen_one.name, citizen_two.name)
 
+    # Step 6: Test citizen age
+    def test_citizen_age(self):
+        citizen = Citizen("CIT-001", "Alex", age=25)
 
-# Step 6: Run the tests
+        self.assertEqual(citizen.age, 25)
+
+    # Step 7: Test citizen location
+    def test_citizen_location(self):
+        citizen = Citizen("CIT-001", "Alex", location=(10, 15))
+
+        self.assertEqual(citizen.location, (10, 15))
+
+    # Step 8: Test default citizen values
+    def test_default_values(self):
+        citizen = Citizen("CIT-001", "Alex")
+
+        self.assertEqual(citizen.age, 0)
+        self.assertEqual(citizen.location, (0, 0))
+
+
+# Step 9: Run the tests
 if __name__ == "__main__":
     unittest.main()
