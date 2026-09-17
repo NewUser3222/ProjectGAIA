@@ -30,14 +30,17 @@ class Citizen:
             "risk_tolerance": 50
         }
 
-        # Step 5: Record the citizen's creation
+        # Step 5: Define the citizen's goals
+        self.goals = []
+
+        # Step 6: Record the citizen's creation
         self.record_history("Citizen created.")
 
-    # Step 6: Record a citizen history event
+    # Step 7: Record a citizen history event
     def record_history(self, event):
         self.history.append(event)
 
-    # Step 7: Change a citizen's need level
+    # Step 8: Change a citizen's need level
     def change_need(self, need_name, amount):
         if need_name not in self.needs:
             raise ValueError(f"Unknown need: {need_name}")
@@ -46,14 +49,14 @@ class Citizen:
 
         self.needs[need_name] = max(0, min(100, new_value))
 
-    # Step 8: Get a citizen's current need level
+    # Step 9: Get a citizen's current need level
     def get_need(self, need_name):
         if need_name not in self.needs:
             raise ValueError(f"Unknown need: {need_name}")
 
         return self.needs[need_name]
 
-    # Step 9: Change a citizen's personality trait
+    # Step 10: Change a citizen's personality trait
     def change_personality(self, trait_name, amount):
         if trait_name not in self.personality:
             raise ValueError(f"Unknown personality trait: {trait_name}")
@@ -62,24 +65,54 @@ class Citizen:
 
         self.personality[trait_name] = max(0, min(100, new_value))
 
-    # Step 10: Get a citizen's personality trait
+    # Step 11: Get a citizen's personality trait
     def get_personality(self, trait_name):
         if trait_name not in self.personality:
             raise ValueError(f"Unknown personality trait: {trait_name}")
 
         return self.personality[trait_name]
 
-    # Step 11: Mark the citizen as deceased
+    # Step 12: Add a goal to the citizen
+    def add_goal(self, description, priority=50):
+        if not description:
+            raise ValueError("Goal description cannot be empty.")
+
+        if not 0 <= priority <= 100:
+            raise ValueError("Goal priority must be between 0 and 100.")
+
+        goal = {
+            "description": description,
+            "priority": priority,
+            "status": "active"
+        }
+
+        self.goals.append(goal)
+
+    # Step 13: Complete a citizen goal
+    def complete_goal(self, goal_index):
+        if goal_index < 0 or goal_index >= len(self.goals):
+            raise IndexError("Invalid goal index.")
+
+        self.goals[goal_index]["status"] = "completed"
+
+    # Step 14: Abandon a citizen goal
+    def abandon_goal(self, goal_index):
+        if goal_index < 0 or goal_index >= len(self.goals):
+            raise IndexError("Invalid goal index.")
+
+        self.goals[goal_index]["status"] = "abandoned"
+
+    # Step 15: Mark the citizen as deceased
     def die(self):
         self.lifecycle_state = DEAD
         self.record_history("Citizen died.")
 
-    # Step 12: Check whether the citizen is alive
+    # Step 16: Check whether the citizen is alive
     def is_alive(self):
         return self.lifecycle_state == ALIVE
 
 
-# Step 13: Run a basic citizen test
+# Step 17: Run a basic citizen test
 if __name__ == "__main__":
     citizen = Citizen(
         "CIT-001",
@@ -94,6 +127,11 @@ if __name__ == "__main__":
 
     citizen.change_personality("curiosity", 20)
 
+    citizen.add_goal("Find a place to live", priority=90)
+    citizen.add_goal("Learn about the surrounding area", priority=60)
+
+    citizen.complete_goal(0)
+
     print(f"Citizen ID: {citizen.citizen_id}")
     print(f"Citizen name: {citizen.name}")
     print(f"Citizen age: {citizen.age}")
@@ -103,4 +141,5 @@ if __name__ == "__main__":
     print(f"Food need: {citizen.get_need('food')}")
     print(f"Personality: {citizen.personality}")
     print(f"Curiosity: {citizen.get_personality('curiosity')}")
+    print(f"Goals: {citizen.goals}")
     print(f"History: {citizen.history}")

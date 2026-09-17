@@ -186,7 +186,81 @@ class TestCitizen(unittest.TestCase):
         with self.assertRaises(ValueError):
             citizen.change_personality("kindness", 10)
 
+    # Step 26: Test that citizens start with no goals
+    def test_initial_goals(self):
+        citizen = Citizen("CIT-001", "Alex")
 
-# Step 26: Run the tests
+        self.assertEqual(citizen.goals, [])
+
+    # Step 27: Test adding a goal
+    def test_add_goal(self):
+        citizen = Citizen("CIT-001", "Alex")
+
+        citizen.add_goal("Find employment", priority=75)
+
+        self.assertEqual(len(citizen.goals), 1)
+        self.assertEqual(
+            citizen.goals[0]["description"],
+            "Find employment"
+        )
+        self.assertEqual(citizen.goals[0]["priority"], 75)
+        self.assertEqual(citizen.goals[0]["status"], "active")
+
+    # Step 28: Test adding multiple goals
+    def test_multiple_goals(self):
+        citizen = Citizen("CIT-001", "Alex")
+
+        citizen.add_goal("Find employment", priority=75)
+        citizen.add_goal("Meet new people", priority=40)
+
+        self.assertEqual(len(citizen.goals), 2)
+
+    # Step 29: Test completing a goal
+    def test_complete_goal(self):
+        citizen = Citizen("CIT-001", "Alex")
+
+        citizen.add_goal("Find employment", priority=75)
+        citizen.complete_goal(0)
+
+        self.assertEqual(
+            citizen.goals[0]["status"],
+            "completed"
+        )
+
+    # Step 30: Test abandoning a goal
+    def test_abandon_goal(self):
+        citizen = Citizen("CIT-001", "Alex")
+
+        citizen.add_goal("Find employment", priority=75)
+        citizen.abandon_goal(0)
+
+        self.assertEqual(
+            citizen.goals[0]["status"],
+            "abandoned"
+        )
+
+    # Step 31: Test empty goal descriptions
+    def test_empty_goal(self):
+        citizen = Citizen("CIT-001", "Alex")
+
+        with self.assertRaises(ValueError):
+            citizen.add_goal("")
+
+    # Step 32: Test invalid goal priority
+    def test_invalid_goal_priority(self):
+        citizen = Citizen("CIT-001", "Alex")
+
+        with self.assertRaises(ValueError):
+            citizen.add_goal("Find employment", priority=150)
+
+    # Step 33: Test invalid goal index
+    def test_invalid_goal_index(self):
+        citizen = Citizen("CIT-001", "Alex")
+
+        with self.assertRaises(IndexError):
+            citizen.complete_goal(0)
+
+
+# Step 34: Run the tests
 if __name__ == "__main__":
     unittest.main()
