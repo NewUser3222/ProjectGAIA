@@ -1,5 +1,5 @@
 # Step 1: Import the World State
-from world import WorldState
+from src.gaia.simulation.world import WorldState
 
 
 # Step 2: Define the Simulation Engine
