@@ -639,9 +639,71 @@ class TestCitizen(unittest.TestCase):
 
         with self.assertRaises(ValueError):
             citizen.set_occupation("")
+    # Step 71: Test initial relationships
+    def test_initial_relationships(self):
+        citizen = Citizen("CIT-001", "Alex")
+
+        self.assertEqual(citizen.relationships, [])
+
+    # Step 72: Test adding a relationship
+    def test_add_relationship(self):
+        citizen = Citizen("CIT-001", "Alex")
+
+        citizen.add_relationship("CIT-002", "friend")
+
+        self.assertEqual(len(citizen.relationships), 1)
+        self.assertEqual(
+            citizen.relationships[0]["citizen_id"],
+            "CIT-002"
+        )
+        self.assertEqual(
+            citizen.relationships[0]["type"],
+            "friend"
+        )
+
+    # Step 73: Test retrieving a relationship
+    def test_get_relationship(self):
+        citizen = Citizen("CIT-001", "Alex")
+
+        citizen.add_relationship("CIT-002", "friend")
+
+        relationship = citizen.get_relationship("CIT-002")
+
+        self.assertEqual(
+            relationship["citizen_id"],
+            "CIT-002"
+        )
+        self.assertEqual(
+            relationship["type"],
+            "friend"
+        )
+
+    # Step 74: Test checking a relationship
+    def test_has_relationship(self):
+        citizen = Citizen("CIT-001", "Alex")
+
+        citizen.add_relationship("CIT-002", "friend")
+
+        self.assertTrue(
+            citizen.has_relationship("CIT-002")
+        )
+        self.assertFalse(
+            citizen.has_relationship("CIT-003")
+        )
+
+    # Step 75: Test invalid relationship
+    def test_invalid_relationship(self):
+        citizen = Citizen("CIT-001", "Alex")
+
+        with self.assertRaises(ValueError):
+            citizen.add_relationship("", "friend")
+
+        with self.assertRaises(ValueError):
+            citizen.add_relationship("CIT-002", "")
 # Step 58: Run the tests
 if __name__ == "__main__":
     unittest.main()
+
 
 
 

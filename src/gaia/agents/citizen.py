@@ -44,6 +44,9 @@ class Citizen:
 
         # Step 8: Define the citizen's occupation
         self.occupation = None
+
+        # Step 22: Store citizen relationships
+        self.relationships = []
         # Step 8: Define the citizen's memories
         self.memories = []
 
@@ -251,8 +254,27 @@ class Citizen:
 
         self.history.append(event)
 
+# Step 23: Add a relationship with another citizen
+    def add_relationship(self, citizen_id, relationship_type):
+        if not citizen_id:
+            raise ValueError("Citizen ID cannot be empty.")
 
+        if not relationship_type:
+            raise ValueError("Relationship type cannot be empty.")
 
+        self.relationships.append({
+            "citizen_id": citizen_id,
+            "type": relationship_type
+        })
 
+    # Step 24: Get a relationship with another citizen
+    def get_relationship(self, citizen_id):
+        for relationship in self.relationships:
+            if relationship["citizen_id"] == citizen_id:
+                return relationship
 
+        return None
 
+    # Step 25: Check whether a relationship exists
+    def has_relationship(self, citizen_id):
+        return self.get_relationship(citizen_id) is not None
