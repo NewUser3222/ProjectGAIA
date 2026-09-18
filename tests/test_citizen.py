@@ -574,7 +574,36 @@ class TestCitizen(unittest.TestCase):
         with self.assertRaises(ValueError):
             citizen.add_memory("Met another citizen.", -1)
 
+    # Step 62: Test initial health
+    def test_initial_health(self):
+        citizen = Citizen("CIT-001", "Alex")
+        self.assertEqual(citizen.get_health(), 100)
+
+    # Step 63: Test changing health
+    def test_change_health(self):
+        citizen = Citizen("CIT-001", "Alex")
+
+        citizen.change_health(-25)
+
+        self.assertEqual(citizen.get_health(), 75)
+
+    # Step 64: Test health lower limit
+    def test_health_lower_limit(self):
+        citizen = Citizen("CIT-001", "Alex")
+
+        citizen.change_health(-150)
+
+        self.assertEqual(citizen.get_health(), 0)
+
+    # Step 65: Test health upper limit
+    def test_health_upper_limit(self):
+        citizen = Citizen("CIT-001", "Alex")
+
+        citizen.change_health(50)
+
+        self.assertEqual(citizen.get_health(), 100)
 # Step 58: Run the tests
 if __name__ == "__main__":
     unittest.main()
+
 

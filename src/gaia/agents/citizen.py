@@ -21,7 +21,10 @@ class Citizen:
             "energy": 100
         }
 
-        # Step 4: Define the citizen's personality
+        # Step 4: Define the citizen's health
+        self.health = 100
+
+        # Step 5: Define the citizen's personality
         self.personality = {
             "sociability": 50,
             "curiosity": 50,
@@ -50,6 +53,14 @@ class Citizen:
 
         self.record_history("Citizen created.")
 
+    # Step 10: Change a citizen's health level
+    def change_health(self, amount):
+        new_value = self.health + amount
+        self.health = max(0, min(100, new_value))
+
+    # Step 11: Get a citizen's current health level
+    def get_health(self):
+        return self.health
     # Step 10: Change a citizen's need level
     def change_need(self, need_name, amount):
         if need_name not in self.needs:
@@ -227,5 +238,7 @@ class Citizen:
             raise ValueError("History event cannot be empty.")
 
         self.history.append(event)
+
+
 
 
