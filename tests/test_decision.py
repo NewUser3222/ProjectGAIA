@@ -42,5 +42,40 @@ class TestDecisionEngine(unittest.TestCase):
         self.assertEqual(best_action.action_id, "eat")
         self.assertEqual(best_action.urgency_score, 65.0)
 
+    def test_execute_action_eat(self):
+        citizen = Citizen("CIT-001", "Test Citizen")
+        citizen.needs["hunger"] = 80
+
+        engine = DecisionEngine()
+        action = ActionOption("eat", "Find Food", urgency_score=80.0)
+        result = engine.execute_action(citizen, action)
+
+        self.assertTrue(result["success"])
+        self.assertEqual(citizen.needs["hunger"], 40)
+        self.assertTrue(len(citizen.memories) > 0)
+
+    def test_execute_action_rest(self):
+        citizen = Citizen("CIT-001", "Test Citizen")
+        citizen.needs["energy"] = 20
+
+        engine = DecisionEngine()
+        action = ActionOption("rest", "Sleep / Rest", urgency_score=80.0)
+        result = engine.execute_action(citizen, action)
+
+        self.assertTrue(result["success"])
+        self.assertEqual(citizen.needs["energy"], 70)
+        self.assertTrue(len(citizen.memories) > 0)
+
+    def test_execute_invalid_action(self):
+        citizen = Citizen("CIT-001", "Test Citizen")
+        engine = DecisionEngine()
+        
+        result_none = engine.execute_action(citizen, None)
+        self.assertFalse(result_none["success"])
+
+        unknown_action = ActionOption("fly", "Fly Around")
+        result_unknown = engine.execute_action(citizen, unknown_action)
+        self.assertFalse(result_unknown["success"])
+
 if __name__ == "__main__":
     unittest.main()

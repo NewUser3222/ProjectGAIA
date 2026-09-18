@@ -21,7 +21,7 @@ class ActionOption:
 
 
 class DecisionEngine:
-    """Evaluates citizen state and available options to select the best action."""
+    """Evaluates citizen state and available options to select and execute actions."""
     def __init__(self):
         pass
 
@@ -49,3 +49,28 @@ class DecisionEngine:
         """Returns the highest priority ActionOption or None."""
         options = self.evaluate_needs(citizen)
         return options[0] if options else None
+
+    def execute_action(self, citizen, action, world_context=None):
+        """Executes a selected ActionOption, modifying citizen state and adding memory."""
+        if not action or not isinstance(action, ActionOption):
+            return {"success": False, "reason": "Invalid action option."}
+
+        current_tick = 0
+        if world_context and isinstance(world_context, dict):
+            current_tick = world_context.get("tick", 0)
+
+        if action.action_id == "eat":
+            current_hunger = citizen.needs.get("hunger", 0)
+            citizen.needs["hunger"] = max(0, current_hunger - 40)
+            if hasattr(citizen, "add_memory"):
+                citizen.add_memory("Ate food to satisfy hunger", current_tick)
+            return {"success": True, "action": "eat", "message": "Citizen ate food."}
+
+        elif action.action_id == "rest":
+            current_energy = citizen.needs.get("energy", 0)
+            citizen.needs["energy"] = min(100, current_energy + 50)
+            if hasattr(citizen, "add_memory"):
+                citizen.add_memory("Rested to restore energy", current_tick)
+            return {"success": True, "action": "rest", "message": "Citizen rested."}
+
+        return {"success": False, "reason": f"Unknown action_id: {action.action_id}"}
