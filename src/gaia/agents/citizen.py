@@ -39,12 +39,13 @@ class Citizen:
         # Step 7: Define the citizen's knowledge
         self.knowledge = []
 
-        # Step 8: Record the citizen's creation
-        self.record_history("Citizen created.")
+        # Step 8: Define the citizen's inventory
+        self.inventory = {}
 
-    # Step 9: Record a citizen history event
-    def record_history(self, event):
-        self.history.append(event)
+        # Step 9: Define the citizen's money
+        self.money = 0
+
+        self.record_history("Citizen created.")
 
     # Step 10: Change a citizen's need level
     def change_need(self, need_name, amount):
@@ -52,7 +53,6 @@ class Citizen:
             raise ValueError(f"Unknown need: {need_name}")
 
         new_value = self.needs[need_name] + amount
-
         self.needs[need_name] = max(0, min(100, new_value))
 
     # Step 11: Get a citizen's current need level
@@ -68,7 +68,6 @@ class Citizen:
             raise ValueError(f"Unknown personality trait: {trait_name}")
 
         new_value = self.personality[trait_name] + amount
-
         self.personality[trait_name] = max(0, min(100, new_value))
 
     # Step 13: Get a citizen's personality trait
@@ -83,16 +82,14 @@ class Citizen:
         if not description:
             raise ValueError("Goal description cannot be empty.")
 
-        if not 0 <= priority <= 100:
+        if priority < 0 or priority > 100:
             raise ValueError("Goal priority must be between 0 and 100.")
 
-        goal = {
+        self.goals.append({
             "description": description,
             "priority": priority,
             "status": "active"
-        }
-
-        self.goals.append(goal)
+        })
 
     # Step 15: Complete a citizen goal
     def complete_goal(self, goal_index):
@@ -101,7 +98,7 @@ class Citizen:
 
         self.goals[goal_index]["status"] = "completed"
 
-       # Step 16: Abandon a citizen goal
+    # Step 16: Abandon a citizen goal
     def abandon_goal(self, goal_index):
         if goal_index < 0 or goal_index >= len(self.goals):
             raise IndexError("Invalid goal index.")
@@ -140,59 +137,78 @@ class Citizen:
 
         return knowledge in self.knowledge
 
-       # Step 21: End the citizen's life
+    # Step 21: End the citizen's life
     def die(self):
-        if self.lifecycle_state == "dead":
+        if self.lifecycle_state == DEAD:
             return
 
-        self.lifecycle_state = "dead"
+        self.lifecycle_state = DEAD
         self.record_history("Citizen died.")
 
     # Step 22: Check whether the citizen is alive
     def is_alive(self):
         return self.lifecycle_state == ALIVE
 
+        # Step 23: Add items to the citizen's inventory
+    def add_item(self, item, quantity):
+        if not item:
+            raise ValueError("Item name cannot be empty.")
 
-# Step 23: Run a basic citizen test
-if __name__ == "__main__":
-    citizen = Citizen(
-        "CIT-001",
-        "Alex",
-        age=25,
-        location=(10, 15)
-    )
+        if quantity < 0:
+            raise ValueError("Quantity cannot be negative.")
 
-    citizen.record_history("Moved to (10, 15).")
+        self.inventory[item] = self.inventory.get(item, 0) + quantity
 
-    citizen.change_need("food", -25)
+    # Step 24: Remove items from the citizen's inventory
+    def remove_item(self, item, quantity):
+        if not item:
+            raise ValueError("Item name cannot be empty.")
 
-    citizen.change_personality("curiosity", 20)
+        if quantity < 0:
+            raise ValueError("Quantity cannot be negative.")
 
-    citizen.add_goal("Find a place to live", priority=90)
-    citizen.add_goal("Learn about the surrounding area", priority=60)
+        current_quantity = self.inventory.get(item, 0)
 
-    citizen.change_skill("gathering", 25)
-    citizen.change_skill("gathering", 10)
+        if quantity > current_quantity:
+            raise ValueError("Not enough items in inventory.")
 
-    citizen.add_knowledge("Basic wilderness survival")
+        new_quantity = current_quantity - quantity
 
-    citizen.complete_goal(0)
+        if new_quantity == 0:
+            self.inventory.pop(item, None)
+        else:
+            self.inventory[item] = new_quantity
 
-    print(f"Citizen ID: {citizen.citizen_id}")
-    print(f"Citizen name: {citizen.name}")
-    print(f"Citizen age: {citizen.age}")
-    print(f"Citizen location: {citizen.location}")
-    print(f"Lifecycle state: {citizen.lifecycle_state}")
-    print(f"Needs: {citizen.needs}")
-    print(f"Food need: {citizen.get_need('food')}")
-    print(f"Personality: {citizen.personality}")
-    print(f"Curiosity: {citizen.get_personality('curiosity')}")
-    print(f"Goals: {citizen.goals}")
-    print(f"Skills: {citizen.skills}")
-    print(f"Gathering skill: {citizen.get_skill('gathering')}")
-    print(f"Knowledge: {citizen.knowledge}")
-    print(
-        f"Knows wilderness survival: "
-        f"{citizen.has_knowledge('Basic wilderness survival')}"
-    )
-    print(f"History: {citizen.history}")
+    # Step 25: Get an item's quantity
+    def get_item_quantity(self, item):
+        if not item:
+            raise ValueError("Item name cannot be empty.")
+
+        return self.inventory.get(item, 0)
+
+    # Step 26: Check whether the citizen has an item
+    def has_item(self, item):
+        if not item:
+            raise ValueError("Item name cannot be empty.")
+
+        return self.get_item_quantity(item) > 0
+
+    # Step 27: Change the citizen's money
+    def change_money(self, amount):
+        new_amount = self.money + amount
+
+        if new_amount < 0:
+            raise ValueError("Citizen cannot have negative money.")
+
+        self.money = new_amount
+
+    # Step 28: Get the citizen's current money
+    def get_money(self):
+        return self.money
+
+    # Step 29: Record an event in the citizen's history
+    def record_history(self, event):
+        if not event:
+            raise ValueError("History event cannot be empty.")
+
+        self.history.append(event)

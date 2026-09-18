@@ -1,4 +1,4 @@
-# Step 1: Import the unittest framework
+﻿# Step 1: Import the unittest framework
 import unittest
 
 # Step 2: Import the Citizen class
@@ -429,7 +429,125 @@ class TestCitizen(unittest.TestCase):
             citizen.add_knowledge("")
 
 
-# Step 46: Run the tests
+
+    # Step 46: Test initial inventory
+    def test_initial_inventory(self):
+        citizen = Citizen("CIT-001", "Alex")
+
+        self.assertEqual(
+            citizen.inventory,
+            {}
+        )
+
+    # Step 47: Test adding an item
+    def test_add_item(self):
+        citizen = Citizen("CIT-001", "Alex")
+
+        citizen.add_item("wood", 5)
+
+        self.assertEqual(
+            citizen.inventory["wood"],
+            5
+        )
+
+    # Step 48: Test adding more of an existing item
+    def test_add_existing_item(self):
+        citizen = Citizen("CIT-001", "Alex")
+
+        citizen.add_item("wood", 5)
+        citizen.add_item("wood", 3)
+
+        self.assertEqual(
+            citizen.get_item_quantity("wood"),
+            8
+        )
+
+    # Step 49: Test removing an item
+    def test_remove_item(self):
+        citizen = Citizen("CIT-001", "Alex")
+
+        citizen.add_item("wood", 5)
+        citizen.remove_item("wood", 2)
+
+        self.assertEqual(
+            citizen.get_item_quantity("wood"),
+            3
+        )
+
+    # Step 50: Test removing an item completely
+    def test_remove_item_completely(self):
+        citizen = Citizen("CIT-001", "Alex")
+
+        citizen.add_item("wood", 5)
+        citizen.remove_item("wood", 5)
+
+        self.assertFalse(
+            citizen.has_item("wood")
+        )
+
+        self.assertNotIn(
+            "wood",
+            citizen.inventory
+        )
+
+    # Step 51: Test getting an item quantity
+    def test_get_item_quantity(self):
+        citizen = Citizen("CIT-001", "Alex")
+
+        citizen.add_item("food", 10)
+
+        self.assertEqual(
+            citizen.get_item_quantity("food"),
+            10
+        )
+
+        self.assertEqual(
+            citizen.get_item_quantity("water"),
+            0
+        )
+
+    # Step 52: Test empty item name
+    def test_empty_item(self):
+        citizen = Citizen("CIT-001", "Alex")
+
+        with self.assertRaises(ValueError):
+            citizen.add_item("", 5)
+
+    # Step 53: Test removing more items than owned
+    def test_remove_too_many_items(self):
+        citizen = Citizen("CIT-001", "Alex")
+
+        citizen.add_item("wood", 5)
+
+        with self.assertRaises(ValueError):
+            citizen.remove_item("wood", 6)
+
+
+
+
+    # Step 54: Test initial money
+    def test_initial_money(self):
+        citizen = Citizen("CIT-001", "Alex")
+        self.assertEqual(citizen.get_money(), 0)
+
+    # Step 55: Test adding money
+    def test_add_money(self):
+        citizen = Citizen("CIT-001", "Alex")
+        citizen.change_money(100)
+        self.assertEqual(citizen.get_money(), 100)
+
+    # Step 56: Test spending money
+    def test_spend_money(self):
+        citizen = Citizen("CIT-001", "Alex")
+        citizen.change_money(100)
+        citizen.change_money(-25)
+        self.assertEqual(citizen.get_money(), 75)
+
+    # Step 57: Test preventing negative money
+    def test_negative_money(self):
+        citizen = Citizen("CIT-001", "Alex")
+        with self.assertRaises(ValueError):
+            citizen.change_money(-1)
+# Step 58: Run the tests
 if __name__ == "__main__":
     unittest.main()
-
