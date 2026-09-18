@@ -602,8 +602,46 @@ class TestCitizen(unittest.TestCase):
         citizen.change_health(50)
 
         self.assertEqual(citizen.get_health(), 100)
+    # Step 66: Test initial occupation
+    def test_initial_occupation(self):
+        citizen = Citizen("CIT-001", "Alex")
+        self.assertIsNone(citizen.get_occupation())
+
+    # Step 67: Test setting an occupation
+    def test_set_occupation(self):
+        citizen = Citizen("CIT-001", "Alex")
+
+        citizen.set_occupation("Farmer")
+
+        self.assertEqual(citizen.get_occupation(), "Farmer")
+
+    # Step 68: Test changing an occupation
+    def test_change_occupation(self):
+        citizen = Citizen("CIT-001", "Alex")
+
+        citizen.set_occupation("Farmer")
+        citizen.set_occupation("Engineer")
+
+        self.assertEqual(citizen.get_occupation(), "Engineer")
+
+    # Step 69: Test clearing an occupation
+    def test_clear_occupation(self):
+        citizen = Citizen("CIT-001", "Alex")
+
+        citizen.set_occupation("Farmer")
+        citizen.set_occupation(None)
+
+        self.assertIsNone(citizen.get_occupation())
+
+    # Step 70: Test empty occupation
+    def test_empty_occupation(self):
+        citizen = Citizen("CIT-001", "Alex")
+
+        with self.assertRaises(ValueError):
+            citizen.set_occupation("")
 # Step 58: Run the tests
 if __name__ == "__main__":
     unittest.main()
+
 
 

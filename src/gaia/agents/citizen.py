@@ -42,6 +42,8 @@ class Citizen:
         # Step 7: Define the citizen's knowledge
         self.knowledge = []
 
+        # Step 8: Define the citizen's occupation
+        self.occupation = None
         # Step 8: Define the citizen's memories
         self.memories = []
 
@@ -61,6 +63,16 @@ class Citizen:
     # Step 11: Get a citizen's current health level
     def get_health(self):
         return self.health
+    # Step 12: Set the citizen's occupation
+    def set_occupation(self, occupation):
+        if occupation == "":
+            raise ValueError("Occupation cannot be empty.")
+
+        self.occupation = occupation
+
+    # Step 13: Get the citizen's current occupation
+    def get_occupation(self):
+        return self.occupation
     # Step 10: Change a citizen's need level
     def change_need(self, need_name, amount):
         if need_name not in self.needs:
@@ -238,6 +250,8 @@ class Citizen:
             raise ValueError("History event cannot be empty.")
 
         self.history.append(event)
+
+
 
 
 
