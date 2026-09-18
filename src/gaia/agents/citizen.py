@@ -39,6 +39,9 @@ class Citizen:
         # Step 7: Define the citizen's knowledge
         self.knowledge = []
 
+        # Step 8: Define the citizen's memories
+        self.memories = []
+
         # Step 8: Define the citizen's inventory
         self.inventory = {}
 
@@ -207,8 +210,22 @@ class Citizen:
         return self.money
 
     # Step 29: Record an event in the citizen's history
+    # Step 29: Add a memory to the citizen
+    def add_memory(self, event, tick):
+        if not event:
+            raise ValueError("Memory event cannot be empty.")
+
+        if tick < 0:
+            raise ValueError("Memory tick cannot be negative.")
+
+        self.memories.append({
+            "event": event,
+            "tick": tick
+        })
     def record_history(self, event):
         if not event:
             raise ValueError("History event cannot be empty.")
 
         self.history.append(event)
+
+

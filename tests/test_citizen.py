@@ -1,4 +1,4 @@
-﻿# Step 1: Import the unittest framework
+# Step 1: Import the unittest framework
 import unittest
 
 # Step 2: Import the Citizen class
@@ -548,6 +548,33 @@ class TestCitizen(unittest.TestCase):
         citizen = Citizen("CIT-001", "Alex")
         with self.assertRaises(ValueError):
             citizen.change_money(-1)
+    # Step 59: Test initial memories
+    def test_initial_memories(self):
+        citizen = Citizen("CIT-001", "Alex")
+        self.assertEqual(citizen.memories, [])
+
+    # Step 60: Test adding a memory
+    def test_add_memory(self):
+        citizen = Citizen("CIT-001", "Alex")
+
+        citizen.add_memory("Met another citizen.", 10)
+
+        self.assertEqual(
+            citizen.memories,
+            [{"event": "Met another citizen.", "tick": 10}]
+        )
+
+    # Step 61: Test invalid memory input
+    def test_invalid_memory(self):
+        citizen = Citizen("CIT-001", "Alex")
+
+        with self.assertRaises(ValueError):
+            citizen.add_memory("", 10)
+
+        with self.assertRaises(ValueError):
+            citizen.add_memory("Met another citizen.", -1)
+
 # Step 58: Run the tests
 if __name__ == "__main__":
     unittest.main()
+
