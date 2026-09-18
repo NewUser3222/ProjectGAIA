@@ -262,6 +262,9 @@ class Citizen:
         if not relationship_type:
             raise ValueError("Relationship type cannot be empty.")
 
+        if self.has_relationship(citizen_id):
+            raise ValueError("Relationship already exists.")
+
         self.relationships.append({
             "citizen_id": citizen_id,
             "type": relationship_type
@@ -278,3 +281,30 @@ class Citizen:
     # Step 25: Check whether a relationship exists
     def has_relationship(self, citizen_id):
         return self.get_relationship(citizen_id) is not None
+
+    # Step 26: Update a relationship
+    def update_relationship(self, citizen_id, relationship_type):
+        if not citizen_id:
+            raise ValueError("Citizen ID cannot be empty.")
+
+        if not relationship_type:
+            raise ValueError("Relationship type cannot be empty.")
+
+        relationship = self.get_relationship(citizen_id)
+
+        if relationship is None:
+            raise ValueError("Relationship does not exist.")
+
+        relationship["type"] = relationship_type
+
+    # Step 27: Remove a relationship
+    def remove_relationship(self, citizen_id):
+        if not citizen_id:
+            raise ValueError("Citizen ID cannot be empty.")
+
+        relationship = self.get_relationship(citizen_id)
+
+        if relationship is None:
+            raise ValueError("Relationship does not exist.")
+
+        self.relationships.remove(relationship)

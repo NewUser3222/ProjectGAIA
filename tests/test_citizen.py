@@ -639,6 +639,63 @@ class TestCitizen(unittest.TestCase):
 
         with self.assertRaises(ValueError):
             citizen.set_occupation("")
+    # Step 76: Test duplicate relationship
+    def test_duplicate_relationship(self):
+        citizen = Citizen("CIT-001", "Alex")
+
+        citizen.add_relationship("CIT-002", "friend")
+
+        with self.assertRaises(ValueError):
+            citizen.add_relationship("CIT-002", "family")
+
+    # Step 77: Test updating a relationship
+    def test_update_relationship(self):
+        citizen = Citizen("CIT-001", "Alex")
+
+        citizen.add_relationship("CIT-002", "friend")
+        citizen.update_relationship("CIT-002", "family")
+
+        relationship = citizen.get_relationship("CIT-002")
+
+        self.assertEqual(relationship["type"], "family")
+
+    # Step 78: Test updating nonexistent relationship
+    def test_update_nonexistent_relationship(self):
+        citizen = Citizen("CIT-001", "Alex")
+
+        with self.assertRaises(ValueError):
+            citizen.update_relationship("CIT-002", "friend")
+
+    # Step 79: Test removing a relationship
+    def test_remove_relationship(self):
+        citizen = Citizen("CIT-001", "Alex")
+
+        citizen.add_relationship("CIT-002", "friend")
+        citizen.remove_relationship("CIT-002")
+
+        self.assertFalse(citizen.has_relationship("CIT-002"))
+
+    # Step 80: Test removing nonexistent relationship
+    def test_remove_nonexistent_relationship(self):
+        citizen = Citizen("CIT-001", "Alex")
+
+        with self.assertRaises(ValueError):
+            citizen.remove_relationship("CIT-002")
+
+    # Step 81: Test invalid relationship management
+    def test_invalid_relationship_management(self):
+        citizen = Citizen("CIT-001", "Alex")
+
+        with self.assertRaises(ValueError):
+            citizen.update_relationship("", "friend")
+
+        with self.assertRaises(ValueError):
+            citizen.update_relationship("CIT-002", "")
+
+        with self.assertRaises(ValueError):
+            citizen.remove_relationship("")
+
+
     # Step 71: Test initial relationships
     def test_initial_relationships(self):
         citizen = Citizen("CIT-001", "Alex")
