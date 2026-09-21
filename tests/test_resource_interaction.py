@@ -109,7 +109,33 @@ class TestResourceInteraction(unittest.TestCase):
         with self.assertRaises(TypeError):
             world.transfer_resource_to_citizen("not a citizen", "food", 1)
 
+    # Step 15: Test consuming food for the citizen food need
+    def test_consume_resource_for_food_need(self):
+        world = WorldState()
+        citizen = Citizen("C001", "Alice")
 
-# Step 15: Run the tests directly
+        citizen.add_item("food", 10)
+        citizen.change_need("food", -50)
+
+        world.consume_resource_for_need(citizen, "food", 5)
+
+        self.assertEqual(citizen.get_item_quantity("food"), 5)
+        self.assertEqual(citizen.get_need("food"), 55)
+
+    # Step 16: Test consuming water for the citizen water need
+    def test_consume_resource_for_water_need(self):
+        world = WorldState()
+        citizen = Citizen("C001", "Alice")
+
+        citizen.add_item("water", 10)
+        citizen.change_need("water", -40)
+
+        world.consume_resource_for_need(citizen, "water", 5)
+
+        self.assertEqual(citizen.get_item_quantity("water"), 5)
+        self.assertEqual(citizen.get_need("water"), 65)
+
+
+# Step 17: Run the tests directly
 if __name__ == "__main__":
     unittest.main()

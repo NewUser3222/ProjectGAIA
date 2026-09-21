@@ -130,17 +130,41 @@ class WorldState:
 
         citizen.remove_item(resource_name, quantity)
 
-    # Step 14: Regenerate natural resources
+    # Step 14: Consume a resource and restore a matching citizen need
+    def consume_resource_for_need(self, citizen, resource_name, quantity):
+        if not isinstance(citizen, Citizen):
+            raise TypeError("Only Citizen objects can consume resources.")
+
+        if resource_name not in self.resources:
+            raise ValueError(f"Unknown resource: {resource_name}")
+
+        if quantity <= 0:
+            raise ValueError("Quantity must be greater than zero.")
+
+        need_name = resource_name
+
+        if need_name not in citizen.needs:
+            raise ValueError(
+                f"Resource '{resource_name}' does not match a citizen need."
+            )
+
+        if citizen.get_item_quantity(resource_name) < quantity:
+            raise ValueError("Not enough resources in citizen inventory.")
+
+        citizen.remove_item(resource_name, quantity)
+        citizen.change_need(need_name, quantity)
+
+    # Step 15: Regenerate natural resources
     def regenerate_resources(self):
         for resource_name, amount in self.resource_regeneration.items():
             self.change_resource(resource_name, amount)
 
-    # Step 15: Advance the world's time
+    # Step 16: Advance the world's time
     def advance_tick(self):
         self.current_tick += 1
         self.regenerate_resources()
 
-    # Step 16: Display basic world information
+    # Step 17: Display basic world information
     def describe(self):
         print(f"World size: {self.width} x {self.height}")
         print(f"World tick: {self.current_tick}")
@@ -149,7 +173,7 @@ class WorldState:
         print(f"Resources: {self.resources}")
 
 
-# Step 17: Run a basic world test
+# Step 18: Run a basic world test
 if __name__ == "__main__":
     world = WorldState()
 
