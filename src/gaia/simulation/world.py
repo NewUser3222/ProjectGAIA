@@ -78,17 +78,69 @@ class WorldState:
 
         return self.resources[resource_name]
 
-    # Step 11: Regenerate natural resources
+    # Step 11: Transfer resources from the world to a citizen
+    def transfer_resource_to_citizen(self, citizen, resource_name, quantity):
+        if not isinstance(citizen, Citizen):
+            raise TypeError("Only Citizen objects can receive resources.")
+
+        if resource_name not in self.resources:
+            raise ValueError(f"Unknown resource: {resource_name}")
+
+        if quantity <= 0:
+            raise ValueError("Quantity must be greater than zero.")
+
+        available = self.get_resource(resource_name)
+
+        if quantity > available:
+            raise ValueError("Not enough resources available in the world.")
+
+        self.change_resource(resource_name, -quantity)
+        citizen.add_item(resource_name, quantity)
+
+    # Step 12: Transfer resources from a citizen back to the world
+    def transfer_resource_from_citizen(self, citizen, resource_name, quantity):
+        if not isinstance(citizen, Citizen):
+            raise TypeError("Only Citizen objects can transfer resources.")
+
+        if resource_name not in self.resources:
+            raise ValueError(f"Unknown resource: {resource_name}")
+
+        if quantity <= 0:
+            raise ValueError("Quantity must be greater than zero.")
+
+        if citizen.get_item_quantity(resource_name) < quantity:
+            raise ValueError("Not enough resources in citizen inventory.")
+
+        citizen.remove_item(resource_name, quantity)
+        self.change_resource(resource_name, quantity)
+
+    # Step 13: Consume a resource from a citizen's inventory
+    def consume_resource(self, citizen, resource_name, quantity):
+        if not isinstance(citizen, Citizen):
+            raise TypeError("Only Citizen objects can consume resources.")
+
+        if resource_name not in self.resources:
+            raise ValueError(f"Unknown resource: {resource_name}")
+
+        if quantity <= 0:
+            raise ValueError("Quantity must be greater than zero.")
+
+        if citizen.get_item_quantity(resource_name) < quantity:
+            raise ValueError("Not enough resources in citizen inventory.")
+
+        citizen.remove_item(resource_name, quantity)
+
+    # Step 14: Regenerate natural resources
     def regenerate_resources(self):
         for resource_name, amount in self.resource_regeneration.items():
             self.change_resource(resource_name, amount)
 
-    # Step 12: Advance the world's time
+    # Step 15: Advance the world's time
     def advance_tick(self):
         self.current_tick += 1
         self.regenerate_resources()
 
-    # Step 13: Display basic world information
+    # Step 16: Display basic world information
     def describe(self):
         print(f"World size: {self.width} x {self.height}")
         print(f"World tick: {self.current_tick}")
@@ -97,7 +149,7 @@ class WorldState:
         print(f"Resources: {self.resources}")
 
 
-# Step 14: Run a basic world test
+# Step 17: Run a basic world test
 if __name__ == "__main__":
     world = WorldState()
 
