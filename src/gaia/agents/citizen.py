@@ -56,9 +56,67 @@ class Citizen:
         # Step 9: Define the citizen's money
         self.money = 0
 
+        # Step 30: Define biological aging state
+        self.life_stage = self._calculate_life_stage(age)
+        self.energy = 100.0
+        self.hunger = 0.0
+        self.speed = 1.0
+        self.energy_decay_rate = 1.0
+        self._apply_life_stage_modifiers()
+
         self.record_history("Citizen created.")
 
-    # Step 10: Change a citizen's health level
+    # Step 31: Determine life stage from age
+    def _calculate_life_stage(self, age):
+        if age < 13:
+            return "Child"
+        elif age < 25:
+            return "Young Adult"
+        elif age < 60:
+            return "Adult"
+        else:
+            return "Elder"
+
+    # Step 32: Apply physical effects of the current life stage
+    def _apply_life_stage_modifiers(self):
+        if self.life_stage == "Child":
+            self.speed = 0.8
+            self.energy_decay_rate = 1.2
+        elif self.life_stage == "Young Adult":
+            self.speed = 1.2
+            self.energy_decay_rate = 0.9
+        elif self.life_stage == "Adult":
+            self.speed = 1.0
+            self.energy_decay_rate = 1.0
+        elif self.life_stage == "Elder":
+            self.speed = 0.7
+            self.energy_decay_rate = 1.3
+
+    # Step 33: Advance the citizen's age
+    def age_up(self, years=1):
+        if not self.is_alive():
+            return
+
+        self.age += years
+        old_stage = self.life_stage
+        self.life_stage = self._calculate_life_stage(self.age)
+
+        if old_stage != self.life_stage:
+            self._apply_life_stage_modifiers()
+
+    # Step 34: Update biological vitals affected by aging
+    def update_vitals(self, hunger_inc=1.0, energy_dec=0.5):
+        if not self.is_alive():
+            return
+
+        adjusted_energy_dec = energy_dec * self.energy_decay_rate
+        self.hunger = min(100.0, self.hunger + hunger_inc)
+        self.energy = max(0.0, self.energy - adjusted_energy_dec)
+
+        if self.hunger >= 100.0 or self.energy <= 0.0:
+            self.change_health(-5.0)
+
+    # Step 35: Change a citizen's health level
     def change_health(self, amount):
         new_value = self.health + amount
         self.health = max(0, min(100, new_value))
