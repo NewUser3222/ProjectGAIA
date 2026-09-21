@@ -69,7 +69,78 @@ class TestWorldState(unittest.TestCase):
         with self.assertRaises(TypeError):
             world.add_citizen("Not a citizen")
 
+    # Step 12: Test changing a resource
+    def test_change_resource(self):
+        world = WorldState()
 
-# Step 12: Run the tests
-if __name__ == "__main__":
-    unittest.main()
+        world.change_resource("food", 100)
+
+        self.assertEqual(world.get_resource("food"), 100)
+
+    # Step 13: Test resource lower limit
+    def test_resource_lower_limit(self):
+        world = WorldState()
+
+        world.change_resource("food", -50)
+
+        self.assertEqual(world.get_resource("food"), 0)
+
+    # Step 14: Test resource upper limit
+    def test_resource_upper_limit(self):
+        world = WorldState()
+
+        world.change_resource("food", 5000)
+
+        self.assertEqual(world.get_resource("food"), 1000)
+
+    # Step 15: Test setting a resource
+    def test_set_resource(self):
+        world = WorldState()
+
+        world.set_resource("water", 250)
+
+        self.assertEqual(world.get_resource("water"), 250)
+
+    # Step 16: Test invalid resource name
+    def test_invalid_resource(self):
+        world = WorldState()
+
+        with self.assertRaises(ValueError):
+            world.get_resource("gold")
+
+    # Step 17: Test negative resource setting
+    def test_negative_resource(self):
+        world = WorldState()
+
+        with self.assertRaises(ValueError):
+            world.set_resource("food", -1)
+
+    # Step 18: Test natural resource regeneration
+    def test_resource_regeneration(self):
+        world = WorldState()
+
+        world.advance_tick()
+
+        self.assertEqual(world.get_resource("food"), 1)
+        self.assertEqual(world.get_resource("water"), 2)
+        self.assertEqual(world.get_resource("wood"), 1)
+        self.assertEqual(world.get_resource("stone"), 0)
+        self.assertEqual(world.get_resource("metal"), 0)
+        self.assertEqual(world.get_resource("energy"), 1)
+
+    # Step 19: Test multiple regeneration ticks
+    def test_multiple_resource_regeneration(self):
+        world = WorldState()
+
+        world.advance_tick()
+        world.advance_tick()
+        world.advance_tick()
+
+        self.assertEqual(world.get_resource("food"), 3)
+        self.assertEqual(world.get_resource("water"), 6)
+        self.assertEqual(world.get_resource("wood"), 3)
+        self.assertEqual(world.get_resource("energy"), 3)
+
+    # Step 20: Run the tests
+    if __name__ == "__main__":
+        unittest.main()

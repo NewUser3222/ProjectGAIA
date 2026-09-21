@@ -23,18 +23,72 @@ class WorldState:
             "energy": 0
         }
 
-    # Step 5: Add a citizen to the world
+        # Step 5: Define maximum resource capacities
+        self.resource_limits = {
+            "food": 1000,
+            "water": 1000,
+            "wood": 1000,
+            "stone": 1000,
+            "metal": 1000,
+            "energy": 1000
+        }
+
+        # Step 6: Define basic natural resource regeneration
+        self.resource_regeneration = {
+            "food": 1,
+            "water": 2,
+            "wood": 1,
+            "stone": 0,
+            "metal": 0,
+            "energy": 1
+        }
+
+    # Step 7: Add a citizen to the world
     def add_citizen(self, citizen):
         if not isinstance(citizen, Citizen):
             raise TypeError("Only Citizen objects can be added to the world.")
 
         self.citizens.append(citizen)
 
-    # Step 6: Advance the world's time
+    # Step 8: Change a world resource amount
+    def change_resource(self, resource_name, amount):
+        if resource_name not in self.resources:
+            raise ValueError(f"Unknown resource: {resource_name}")
+
+        new_amount = self.resources[resource_name] + amount
+        maximum = self.resource_limits[resource_name]
+
+        self.resources[resource_name] = max(0, min(maximum, new_amount))
+
+    # Step 9: Set a world resource amount
+    def set_resource(self, resource_name, amount):
+        if resource_name not in self.resources:
+            raise ValueError(f"Unknown resource: {resource_name}")
+
+        if amount < 0:
+            raise ValueError("Resource amount cannot be negative.")
+
+        maximum = self.resource_limits[resource_name]
+        self.resources[resource_name] = min(maximum, amount)
+
+    # Step 10: Get a world resource amount
+    def get_resource(self, resource_name):
+        if resource_name not in self.resources:
+            raise ValueError(f"Unknown resource: {resource_name}")
+
+        return self.resources[resource_name]
+
+    # Step 11: Regenerate natural resources
+    def regenerate_resources(self):
+        for resource_name, amount in self.resource_regeneration.items():
+            self.change_resource(resource_name, amount)
+
+    # Step 12: Advance the world's time
     def advance_tick(self):
         self.current_tick += 1
+        self.regenerate_resources()
 
-    # Step 7: Display basic world information
+    # Step 13: Display basic world information
     def describe(self):
         print(f"World size: {self.width} x {self.height}")
         print(f"World tick: {self.current_tick}")
@@ -43,7 +97,7 @@ class WorldState:
         print(f"Resources: {self.resources}")
 
 
-# Step 8: Run a basic world test
+# Step 14: Run a basic world test
 if __name__ == "__main__":
     world = WorldState()
 
