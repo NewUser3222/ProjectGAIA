@@ -23,6 +23,19 @@ class TestAgingAndLifeStages(unittest.TestCase):
         self.assertEqual(child.life_stage, "Young Adult")
         self.assertEqual(child.speed, 1.2)
 
+    def test_update_needs_changes_biological_and_decision_state(self):
+        citizen = Citizen("CIT-05", "Needs Test")
+
+        initial_hunger = citizen.hunger
+        initial_energy = citizen.energy
+
+        citizen.update_needs()
+
+        self.assertGreater(citizen.hunger, initial_hunger)
+        self.assertLess(citizen.energy, initial_energy)
+        self.assertEqual(citizen.needs["hunger"], citizen.hunger)
+        self.assertEqual(citizen.needs["energy"], citizen.energy)
+
     def test_energy_decay_modifiers(self):
         elder = Citizen("CIT-04", "Elena", age=70)
         initial_energy = elder.energy

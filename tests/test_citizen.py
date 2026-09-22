@@ -138,7 +138,8 @@ class TestCitizen(unittest.TestCase):
                 "food": 100,
                 "water": 100,
                 "shelter": 100,
-                "energy": 100
+                "energy": 100,
+                "hunger": 0.0
             }
         )
 

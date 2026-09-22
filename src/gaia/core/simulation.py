@@ -37,12 +37,18 @@ class Simulation:
 
         # 1. Evaluate individual needs and actions for each citizen
         for citizen in self.citizens:
-            if hasattr(citizen, "update_needs"):
-                citizen.update_needs()
+            if not citizen.is_alive():
+                continue
+
+            citizen.update_needs()
 
             action = self.decision_engine.select_best_action(citizen)
             if action:
-                self.decision_engine.execute_action(citizen, action, world_context=world_context)
+                self.decision_engine.execute_action(
+                    citizen,
+                    action,
+                    world_context=world_context
+                )
 
         # 2. Trigger social interactions between citizens when multiple exist
         if len(self.citizens) >= 2:

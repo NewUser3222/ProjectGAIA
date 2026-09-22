@@ -45,8 +45,9 @@ class ActionExecutor:
             if world is not None and citizen.get_item_quantity("food") > 0:
                 world.consume_resource_for_need(citizen, "food", 1)
 
-            current_hunger = citizen.needs.get("hunger", 0)
-            citizen.needs["hunger"] = max(0, current_hunger - 40)
+            current_hunger = citizen.needs.get("hunger", citizen.hunger)
+            citizen.hunger = max(0.0, current_hunger - 40)
+            citizen.needs["hunger"] = citizen.hunger
 
             if hasattr(citizen, "add_memory"):
                 citizen.add_memory(
@@ -62,8 +63,9 @@ class ActionExecutor:
 
         # Step 6: Execute the rest action
         if action.action_id == "rest":
-            current_energy = citizen.needs.get("energy", 0)
-            citizen.needs["energy"] = min(100, current_energy + 50)
+            current_energy = citizen.needs.get("energy", citizen.energy)
+            citizen.energy = min(100.0, current_energy + 50)
+            citizen.needs["energy"] = citizen.energy
 
             if hasattr(citizen, "add_memory"):
                 citizen.add_memory(

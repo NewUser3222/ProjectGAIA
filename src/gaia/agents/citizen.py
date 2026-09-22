@@ -18,7 +18,8 @@ class Citizen:
             "food": 100,
             "water": 100,
             "shelter": 100,
-            "energy": 100
+            "energy": 100,
+            "hunger": 0.0
         }
 
         # Step 4: Define the citizen's health
@@ -115,6 +116,20 @@ class Citizen:
 
         if self.hunger >= 100.0 or self.energy <= 0.0:
             self.change_health(-5.0)
+
+    # Step 34: Update decision-facing needs from biological vitals
+    def update_needs(self):
+        """Advance biological vitals and synchronize decision-facing needs."""
+        if not self.is_alive():
+            return
+
+        self.update_vitals()
+
+        # Hunger remains a biological vital represented as 0 = full, 100 = starving.
+        self.needs["hunger"] = self.hunger
+
+        # Energy uses the same 0-100 scale in both representations.
+        self.needs["energy"] = self.energy
 
     # Step 35: Change a citizen's health level
     def change_health(self, amount):

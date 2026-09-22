@@ -23,6 +23,25 @@ class TestSimulationLoopIntegration(unittest.TestCase):
         self.assertTrue(len(self.alice.memories) > 0)
         self.assertTrue(len(self.bob.memories) > 0)
 
+    def test_tick_changes_needs_and_allows_decision_processing(self):
+        self.sim.start()
+
+        self.alice.needs["hunger"] = 50
+        self.alice.needs["energy"] = 100
+        self.alice.hunger = 50
+        self.alice.energy = 100
+
+        self.sim.step()
+
+        # The tick increases hunger, then the decision/action cycle
+        # recognizes the significant need and executes eat.
+        self.assertLess(self.alice.hunger, 50)
+        self.assertLess(self.alice.energy, 100)
+        self.assertEqual(self.alice.needs["hunger"], self.alice.hunger)
+        self.assertEqual(self.alice.needs["energy"], self.alice.energy)
+        self.assertEqual(self.alice.hunger, 11.0)
+        self.assertEqual(self.alice.energy, 99.4)
+
     def test_social_interaction_in_loop(self):
         self.sim.start()
         self.sim.step()
