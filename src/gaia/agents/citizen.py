@@ -117,19 +117,55 @@ class Citizen:
         if self.hunger >= 100.0 or self.energy <= 0.0:
             self.change_health(-5.0)
 
-    # Step 34: Update decision-facing needs from biological vitals
+    # Step 37: Centrally process all citizen needs for one simulation tick
     def update_needs(self):
-        """Advance biological vitals and synchronize decision-facing needs."""
+        """Advance citizen needs once and apply survival consequences."""
         if not self.is_alive():
             return
 
+        # Biological vitals are updated exactly once through this method.
         self.update_vitals()
 
-        # Hunger remains a biological vital represented as 0 = full, 100 = starving.
-        self.needs["hunger"] = self.hunger
+        # World-relevant resource needs decline predictably with time.
+        self.change_need("food", -1.0)
+        self.change_need("water", -1.0)
+        self.change_need("shelter", -0.25)
 
-        # Energy uses the same 0-100 scale in both representations.
+        # Hunger and energy remain synchronized with their biological values.
+        self.needs["hunger"] = self.hunger
         self.needs["energy"] = self.energy
+
+        # Step 38: Apply health consequences from sustained critical needs.
+        self.apply_survival_consequences()
+
+    # Step 38: Apply health consequences from critical unmet needs
+    def apply_survival_consequences(self):
+        """Apply predictable health consequences for severe unmet needs."""
+        if not self.is_alive():
+            return
+
+        critical_damage = 0.0
+
+        if self.hunger >= 90.0:
+            critical_damage += 2.0
+
+        if self.energy <= 10.0:
+            critical_damage += 2.0
+
+        if self.needs.get("food", 100) <= 10:
+            critical_damage += 1.0
+
+        if self.needs.get("water", 100) <= 10:
+            critical_damage += 1.0
+
+        if self.needs.get("shelter", 100) <= 10:
+            critical_damage += 1.0
+
+        if critical_damage > 0:
+            self.change_health(-critical_damage)
+
+            if self.health <= 0:
+                self.die()
 
     # Step 35: Change a citizen's health level
     def change_health(self, amount):

@@ -8,6 +8,7 @@ from src.gaia.agents.action import ActionExecutor, ActionOption
 
 # Step 3: Import the Citizen entity
 from src.gaia.agents.citizen import Citizen
+from src.gaia.simulation.world import WorldState
 
 
 # Step 4: Define ActionExecutor tests
@@ -104,6 +105,31 @@ class TestActionExecutor(unittest.TestCase):
         self.assertEqual(citizen.needs["food"], 51)
         self.assertEqual(citizen.needs["hunger"], 40)
         self.assertEqual(citizen.memories[-1]["tick"], 10)
+
+
+
+    # Step 39: Test world-backed eat fails without food
+    def test_execute_eat_fails_without_world_food(self):
+        citizen = Citizen("C001", "Alice")
+        world = WorldState()
+        citizen.needs["hunger"] = 80
+
+        action = ActionOption("eat", "Find Food")
+        executor = ActionExecutor()
+
+        result = executor.execute(
+            citizen,
+            action,
+            {"tick": 11, "world": world}
+        )
+
+        self.assertFalse(result["success"])
+        self.assertEqual(result["action"], "eat")
+        self.assertEqual(
+            result["reason"],
+            "No food available in citizen inventory."
+        )
+        self.assertEqual(citizen.needs["hunger"], 80)
 
 if __name__ == "__main__":
     unittest.main()

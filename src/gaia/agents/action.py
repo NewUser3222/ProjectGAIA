@@ -39,11 +39,31 @@ class ActionExecutor:
             current_tick = world_context.get("tick", 0)
             world = world_context.get("world")
 
-        # Step 5: Execute the eat action
+        # Step 39: Execute the eat action with world-backed resource validation.
         if action.action_id == "eat":
-            # Use the world/resource system when available.
-            if world is not None and citizen.get_item_quantity("food") > 0:
-                world.consume_resource_for_need(citizen, "food", 1)
+            if world is not None:
+                # Use food already carried by the citizen first.
+                if citizen.get_item_quantity("food") <= 0:
+                    # Acquire one unit from the shared world when needed.
+                    if world.get_resource("food") <= 0:
+                        return {
+                            "success": False,
+                            "action": "eat",
+                            "reason": "No food available in citizen inventory."
+                        }
+
+                    world.transfer_resource_to_citizen(
+                        citizen,
+                        "food",
+                        1
+                    )
+
+                # Consume the food and restore the matching food need.
+                world.consume_resource_for_need(
+                    citizen,
+                    "food",
+                    1
+                )
 
             current_hunger = citizen.needs.get("hunger", citizen.hunger)
             citizen.hunger = max(0.0, current_hunger - 40)

@@ -119,5 +119,82 @@ class TestSimulationLoopIntegration(unittest.TestCase):
         self.assertTrue(has_talk_memory)
 
 
+
+
+    # Step 40: Test multiple consecutive ticks preserve independent state
+    def test_multiple_ticks_preserve_independent_citizen_state(self):
+        self.sim.start()
+
+        self.alice.hunger = 10.0
+        self.alice.needs["hunger"] = 10.0
+
+        self.bob.hunger = 70.0
+        self.bob.needs["hunger"] = 70.0
+        self.bob.add_item("food", 3)
+
+        self.sim.world.set_resource("food", 20)
+
+        self.sim.step()
+        alice_hunger_after_first = self.alice.hunger
+        bob_hunger_after_first = self.bob.hunger
+
+        self.sim.step()
+        self.sim.step()
+
+        self.assertEqual(self.sim.tick, 3)
+        self.assertEqual(self.sim.world.current_tick, 3)
+
+        self.assertNotEqual(
+            self.alice.hunger,
+            self.bob.hunger
+        )
+        self.assertLess(
+            self.alice.get_need("food"),
+            100
+        )
+        self.assertLess(
+            self.alice.get_need("water"),
+            100
+        )
+        self.assertLess(
+            self.alice.get_need("shelter"),
+            100
+        )
+
+        self.assertLessEqual(
+            self.bob.get_item_quantity("food"),
+            3
+        )
+        self.assertLessEqual(
+            self.alice.hunger,
+            alice_hunger_after_first + 3
+        )
+        self.assertLessEqual(
+            self.bob.hunger,
+            bob_hunger_after_first + 3
+        )
+
+    # Step 40: Test dead citizen is skipped while another remains active
+    def test_dead_citizen_is_skipped_in_multi_citizen_loop(self):
+        self.sim.start()
+
+        self.alice.die()
+
+        bob_energy_before = self.bob.energy
+        alice_needs_before = self.alice.needs.copy()
+
+        self.sim.step()
+
+        self.assertFalse(self.alice.is_alive())
+        self.assertEqual(self.alice.needs, alice_needs_before)
+        self.assertLess(self.bob.energy, bob_energy_before)
+
+        bob_talks = any(
+            "conversation" in str(memory).lower()
+            or "talk" in str(memory).lower()
+            for memory in self.bob.memories
+        )
+        self.assertFalse(bob_talks)
+
 if __name__ == "__main__":
     unittest.main()

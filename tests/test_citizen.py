@@ -759,6 +759,61 @@ class TestCitizen(unittest.TestCase):
         with self.assertRaises(ValueError):
             citizen.add_relationship("CIT-002", "")
 # Step 58: Run the tests
+
+
+    # Step 37: Test centralized need processing
+    def test_update_needs_processes_world_relevant_needs_once(self):
+        citizen = Citizen("CIT-001", "Alex")
+
+        citizen.update_needs()
+
+        self.assertEqual(citizen.get_need("food"), 99.0)
+        self.assertEqual(citizen.get_need("water"), 99.0)
+        self.assertEqual(citizen.get_need("shelter"), 99.75)
+        self.assertEqual(citizen.get_need("energy"), citizen.energy)
+        self.assertEqual(citizen.get_need("hunger"), citizen.hunger)
+
+    # Step 37: Test dead citizens do not process needs
+    def test_dead_citizen_does_not_process_needs(self):
+        citizen = Citizen("CIT-001", "Alex")
+        citizen.die()
+
+        needs_before = citizen.needs.copy()
+        hunger_before = citizen.hunger
+        energy_before = citizen.energy
+
+        citizen.update_needs()
+
+        self.assertEqual(citizen.needs, needs_before)
+        self.assertEqual(citizen.hunger, hunger_before)
+        self.assertEqual(citizen.energy, energy_before)
+
+    # Step 38: Test critical unmet needs reduce health
+    def test_critical_needs_reduce_health(self):
+        citizen = Citizen("CIT-001", "Alex")
+        citizen.needs["water"] = 10
+
+        citizen.apply_survival_consequences()
+
+        self.assertLess(citizen.health, 100)
+
+    # Step 38: Test critical health loss causes death
+    def test_critical_needs_can_cause_death(self):
+        citizen = Citizen("CIT-001", "Alex")
+        citizen.health = 1
+        citizen.hunger = 100
+        citizen.needs["hunger"] = 100
+        citizen.needs["water"] = 0
+        citizen.needs["food"] = 0
+        citizen.needs["shelter"] = 0
+        citizen.needs["energy"] = 0
+
+        citizen.apply_survival_consequences()
+
+        self.assertEqual(citizen.health, 0)
+        self.assertFalse(citizen.is_alive())
+        self.assertEqual(citizen.history.count("Citizen died."), 1)
+
 if __name__ == "__main__":
     unittest.main()
 

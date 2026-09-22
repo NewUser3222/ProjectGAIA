@@ -60,11 +60,16 @@ class Simulation:
                     world_context=world_context
                 )
 
-        # Trigger social interactions between citizens when multiple exist.
-        if len(self.citizens) >= 2:
-            for i in range(len(self.citizens) - 1):
-                c1 = self.citizens[i]
-                c2 = self.citizens[i + 1]
+        # Step 40: Social interactions only occur between active citizens.
+        active_citizens = [
+            citizen for citizen in self.citizens
+            if citizen.is_alive()
+        ]
+
+        if len(active_citizens) >= 2:
+            for i in range(len(active_citizens) - 1):
+                c1 = active_citizens[i]
+                c2 = active_citizens[i + 1]
 
                 interaction = SocialInteraction("talk", c1, c2)
                 interaction.execute(current_tick=self.tick)
