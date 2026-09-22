@@ -74,34 +74,36 @@ class TestActionExecutor(unittest.TestCase):
 
 
 # Step 9: Run the tests directly
+
+    # Step 33: Verify eat action integrates with WorldState resources
+    def test_execute_eat_consumes_world_integrated_food(self):
+        from src.gaia.simulation.world import WorldState
+
+        citizen = Citizen("C001", "Alice")
+        world = WorldState()
+
+        citizen.add_item("food", 2)
+        citizen.needs["hunger"] = 80
+        citizen.needs["food"] = 50
+
+        action = ActionOption("eat", "Find Food")
+        executor = ActionExecutor()
+
+        result = executor.execute(
+            citizen,
+            action,
+            {
+                "tick": 10,
+                "world": world
+            }
+        )
+
+        self.assertTrue(result["success"])
+        self.assertEqual(result["action"], "eat")
+        self.assertEqual(citizen.get_item_quantity("food"), 1)
+        self.assertEqual(citizen.needs["food"], 51)
+        self.assertEqual(citizen.needs["hunger"], 40)
+        self.assertEqual(citizen.memories[-1]["tick"], 10)
+
 if __name__ == "__main__":
     unittest.main()
-# Step 33: Verify eat action integrates with WorldState resources
-def test_execute_eat_consumes_world_integrated_food(self):
-    from src.gaia.simulation.world import WorldState
-
-    citizen = Citizen("C001", "Alice")
-    world = WorldState()
-
-    citizen.add_item("food", 2)
-    citizen.needs["hunger"] = 80
-    citizen.needs["food"] = 50
-
-    action = ActionOption("eat", "Find Food")
-    executor = ActionExecutor()
-
-    result = executor.execute(
-        citizen,
-        action,
-        {
-            "tick": 10,
-            "world": world
-        }
-    )
-
-    self.assertTrue(result["success"])
-    self.assertEqual(result["action"], "eat")
-    self.assertEqual(citizen.get_item_quantity("food"), 1)
-    self.assertEqual(citizen.needs["food"], 51)
-    self.assertEqual(citizen.needs["hunger"], 40)
-    self.assertEqual(citizen.memories[-1]["tick"], 10)
