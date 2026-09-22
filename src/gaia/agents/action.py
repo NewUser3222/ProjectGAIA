@@ -33,12 +33,18 @@ class ActionExecutor:
             return {"success": False, "reason": "Invalid action option."}
 
         current_tick = 0
+        world = None
 
         if world_context and isinstance(world_context, dict):
             current_tick = world_context.get("tick", 0)
+            world = world_context.get("world")
 
         # Step 5: Execute the eat action
         if action.action_id == "eat":
+            # Use the world/resource system when available.
+            if world is not None and citizen.get_item_quantity("food") > 0:
+                world.consume_resource_for_need(citizen, "food", 1)
+
             current_hunger = citizen.needs.get("hunger", 0)
             citizen.needs["hunger"] = max(0, current_hunger - 40)
 
