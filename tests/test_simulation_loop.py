@@ -42,6 +42,39 @@ class TestSimulationLoopIntegration(unittest.TestCase):
         self.assertEqual(self.alice.hunger, 11.0)
         self.assertEqual(self.alice.energy, 99.4)
 
+    def test_citizens_process_needs_and_actions_independently(self):
+        self.sim.start()
+
+        # Alice has significant hunger and should eat.
+        self.alice.hunger = 70.0
+        self.alice.needs["hunger"] = 70.0
+        self.alice.energy = 100.0
+        self.alice.needs["energy"] = 100.0
+
+        # Bob has low energy and should rest.
+        self.bob.hunger = 0.0
+        self.bob.needs["hunger"] = 0.0
+        self.bob.energy = 20.0
+        self.bob.needs["energy"] = 20.0
+
+        self.sim.step()
+
+        # Alice's hunger action must not modify Bob's hunger or energy.
+        self.assertEqual(self.alice.hunger, 31.0)
+        self.assertEqual(self.alice.needs["hunger"], 31.0)
+        self.assertEqual(self.alice.energy, 99.4)
+        self.assertEqual(self.alice.needs["energy"], 99.4)
+
+        # Bob's rest action must not modify Alice's state.
+        self.assertEqual(self.bob.hunger, 1.0)
+        self.assertEqual(self.bob.needs["hunger"], 1.0)
+        self.assertEqual(self.bob.energy, 69.4)
+        self.assertEqual(self.bob.needs["energy"], 69.4)
+
+        # Each citizen must have processed independently.
+        self.assertNotEqual(self.alice.hunger, self.bob.hunger)
+        self.assertNotEqual(self.alice.energy, self.bob.energy)
+
     def test_social_interaction_in_loop(self):
         self.sim.start()
         self.sim.step()
