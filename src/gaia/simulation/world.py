@@ -97,6 +97,43 @@ class WorldState:
         self.change_resource(resource_name, -quantity)
         citizen.add_item(resource_name, quantity)
 
+    # Step 41: Gather a finite world resource into a citizen inventory
+    def gather_resource(self, citizen, resource_name, quantity=1):
+        """Gather available world resources at the citizen's location."""
+        if not isinstance(citizen, Citizen):
+            raise TypeError("Only Citizen objects can gather resources.")
+
+        if resource_name not in self.resources:
+            raise ValueError(f"Unknown resource: {resource_name}")
+
+        if quantity <= 0:
+            raise ValueError("Quantity must be greater than zero.")
+
+        if not self._is_valid_location(citizen.location):
+            raise ValueError("Citizen location is outside the world bounds.")
+
+        available = self.get_resource(resource_name)
+
+        if quantity > available:
+            raise ValueError("Not enough resources available to gather.")
+
+        self.change_resource(resource_name, -quantity)
+        citizen.add_item(resource_name, quantity)
+
+        return quantity
+
+    # Step 42: Validate a citizen's world location before gathering
+    def _is_valid_location(self, location):
+        if not isinstance(location, (tuple, list)) or len(location) != 2:
+            return False
+
+        x, y = location
+
+        if not isinstance(x, (int, float)) or not isinstance(y, (int, float)):
+            return False
+
+        return 0 <= x < self.width and 0 <= y < self.height
+
     # Step 12: Transfer resources from a citizen back to the world
     def transfer_resource_from_citizen(self, citizen, resource_name, quantity):
         if not isinstance(citizen, Citizen):
@@ -154,9 +191,12 @@ class WorldState:
         citizen.remove_item(resource_name, quantity)
         citizen.change_need(need_name, quantity)
 
-    # Step 15: Regenerate natural resources
+    # Step 42: Regenerate only configured renewable resources
     def regenerate_resources(self):
         for resource_name, amount in self.resource_regeneration.items():
+            if amount <= 0:
+                continue
+
             self.change_resource(resource_name, amount)
 
     # Step 16: Advance the world's time

@@ -33,12 +33,11 @@ class TestSimulationLoopIntegration(unittest.TestCase):
 
         self.sim.step()
 
-        self.assertLess(self.alice.hunger, 50)
-        self.assertLess(self.alice.energy, 100)
+        self.assertEqual(self.alice.hunger, 51.0)
+        self.assertEqual(self.alice.energy, 99.4)
         self.assertEqual(self.alice.needs["hunger"], self.alice.hunger)
         self.assertEqual(self.alice.needs["energy"], self.alice.energy)
-        self.assertEqual(self.alice.hunger, 11.0)
-        self.assertEqual(self.alice.energy, 99.4)
+        self.assertEqual(self.alice.get_item_quantity("food"), 1)
 
     def test_citizens_process_needs_and_actions_independently(self):
         self.sim.start()
@@ -55,10 +54,11 @@ class TestSimulationLoopIntegration(unittest.TestCase):
 
         self.sim.step()
 
-        self.assertEqual(self.alice.hunger, 31.0)
-        self.assertEqual(self.alice.needs["hunger"], 31.0)
+        self.assertEqual(self.alice.hunger, 71.0)
+        self.assertEqual(self.alice.needs["hunger"], 71.0)
         self.assertEqual(self.alice.energy, 99.4)
         self.assertEqual(self.alice.needs["energy"], 99.4)
+        self.assertEqual(self.alice.get_item_quantity("food"), 1)
 
         self.assertEqual(self.bob.hunger, 1.0)
         self.assertEqual(self.bob.needs["hunger"], 1.0)

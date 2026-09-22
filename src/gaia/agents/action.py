@@ -39,31 +39,28 @@ class ActionExecutor:
             current_tick = world_context.get("tick", 0)
             world = world_context.get("world")
 
-        # Step 39: Execute the eat action with world-backed resource validation.
+        # Step 43: Eat only from actual citizen inventory when world context exists.
         if action.action_id == "eat":
             if world is not None:
-                # Use food already carried by the citizen first.
                 if citizen.get_item_quantity("food") <= 0:
-                    # Acquire one unit from the shared world when needed.
-                    if world.get_resource("food") <= 0:
-                        return {
-                            "success": False,
-                            "action": "eat",
-                            "reason": "No food available in citizen inventory."
-                        }
+                    return {
+                        "success": False,
+                        "action": "eat",
+                        "reason": "No food available in citizen inventory."
+                    }
 
-                    world.transfer_resource_to_citizen(
+                try:
+                    world.consume_resource_for_need(
                         citizen,
                         "food",
                         1
                     )
-
-                # Consume the food and restore the matching food need.
-                world.consume_resource_for_need(
-                    citizen,
-                    "food",
-                    1
-                )
+                except ValueError as error:
+                    return {
+                        "success": False,
+                        "action": "eat",
+                        "reason": str(error)
+                    }
 
             current_hunger = citizen.needs.get("hunger", citizen.hunger)
             citizen.hunger = max(0.0, current_hunger - 40)
@@ -79,6 +76,45 @@ class ActionExecutor:
                 "success": True,
                 "action": "eat",
                 "message": "Citizen ate food."
+            }
+
+        # Step 41: Gather a resource directly into citizen inventory.
+        if action.action_id == "gather":
+            if world is None:
+                return {
+                    "success": False,
+                    "action": "gather",
+                    "reason": "World context is required for gathering."
+                }
+
+            resource_name = action.requirements.get("resource", "food")
+            quantity = action.requirements.get("quantity", 1)
+
+            try:
+                world.gather_resource(
+                    citizen,
+                    resource_name,
+                    quantity
+                )
+            except (TypeError, ValueError) as error:
+                return {
+                    "success": False,
+                    "action": "gather",
+                    "reason": str(error)
+                }
+
+            if hasattr(citizen, "add_memory"):
+                citizen.add_memory(
+                    f"Gathered {quantity} {resource_name}.",
+                    current_tick
+                )
+
+            return {
+                "success": True,
+                "action": "gather",
+                "resource": resource_name,
+                "quantity": quantity,
+                "message": f"Citizen gathered {quantity} {resource_name}."
             }
 
         # Step 6: Execute the rest action

@@ -52,7 +52,11 @@ class Simulation:
 
             citizen.update_needs()
 
-            action = self.decision_engine.select_best_action(citizen)
+            # Step 44: Decisions must observe the current shared world state.
+            action = self.decision_engine.select_best_action(
+                citizen,
+                world=self.world
+            )
             if action:
                 self.decision_engine.execute_action(
                     citizen,
