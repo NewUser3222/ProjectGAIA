@@ -1,19 +1,23 @@
 from src.gaia.agents.decision import DecisionEngine
 from src.gaia.agents.social import SocialInteraction
+from src.gaia.simulation.world import WorldState
+
 
 class Simulation:
     """Core simulation orchestrator managing world ticks, citizens, and environmental loop."""
-    
+
     def __init__(self):
         self.tick = 0
         self.is_running = False
         self.citizens = []
+        self.world = WorldState()
         self.decision_engine = DecisionEngine()
 
     def add_citizen(self, citizen):
-        """Adds a citizen to the simulation world."""
+        """Adds a citizen to the simulation and its world state."""
         if citizen and citizen not in self.citizens:
             self.citizens.append(citizen)
+            self.world.add_citizen(citizen)
 
     def start(self):
         """Starts the simulation process."""
@@ -26,16 +30,22 @@ class Simulation:
         print("GAIA Simulation stopped.")
 
     def step(self):
-        """Advances the simulation by one tick, executing agent needs, decisions, and social behavior."""
+        """Advances one simulation tick across world and citizen state."""
         if not self.is_running:
             return
 
         self.tick += 1
         print(f"Simulation tick: {self.tick}")
 
-        world_context = {"tick": self.tick}
+        # Step 36: Advance shared world state once per simulation tick.
+        self.world.advance_tick()
 
-        # 1. Evaluate individual needs and actions for each citizen
+        world_context = {
+            "tick": self.tick,
+            "world": self.world
+        }
+
+        # Step 36: Evaluate individual needs and actions for each citizen.
         for citizen in self.citizens:
             if not citizen.is_alive():
                 continue
@@ -50,11 +60,11 @@ class Simulation:
                     world_context=world_context
                 )
 
-        # 2. Trigger social interactions between citizens when multiple exist
+        # Trigger social interactions between citizens when multiple exist.
         if len(self.citizens) >= 2:
             for i in range(len(self.citizens) - 1):
                 c1 = self.citizens[i]
                 c2 = self.citizens[i + 1]
-                # Default to friendly conversation tick-based interaction
+
                 interaction = SocialInteraction("talk", c1, c2)
                 interaction.execute(current_tick=self.tick)

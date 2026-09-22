@@ -2,20 +2,20 @@ import unittest
 from src.gaia.core.simulation import Simulation
 from src.gaia.agents.citizen import Citizen
 
+
 class TestSimulationLoopIntegration(unittest.TestCase):
 
     def setUp(self):
         self.sim = Simulation()
         self.alice = Citizen("CIT-001", "Alice")
         self.bob = Citizen("CIT-002", "Bob")
-        
+
         self.sim.add_citizen(self.alice)
         self.sim.add_citizen(self.bob)
 
     def test_multi_agent_step_execution(self):
         self.sim.start()
-        
-        # Advance 3 ticks
+
         for _ in range(3):
             self.sim.step()
 
@@ -33,8 +33,6 @@ class TestSimulationLoopIntegration(unittest.TestCase):
 
         self.sim.step()
 
-        # The tick increases hunger, then the decision/action cycle
-        # recognizes the significant need and executes eat.
         self.assertLess(self.alice.hunger, 50)
         self.assertLess(self.alice.energy, 100)
         self.assertEqual(self.alice.needs["hunger"], self.alice.hunger)
@@ -45,13 +43,11 @@ class TestSimulationLoopIntegration(unittest.TestCase):
     def test_citizens_process_needs_and_actions_independently(self):
         self.sim.start()
 
-        # Alice has significant hunger and should eat.
         self.alice.hunger = 70.0
         self.alice.needs["hunger"] = 70.0
         self.alice.energy = 100.0
         self.alice.needs["energy"] = 100.0
 
-        # Bob has low energy and should rest.
         self.bob.hunger = 0.0
         self.bob.needs["hunger"] = 0.0
         self.bob.energy = 20.0
@@ -59,30 +55,69 @@ class TestSimulationLoopIntegration(unittest.TestCase):
 
         self.sim.step()
 
-        # Alice's hunger action must not modify Bob's hunger or energy.
         self.assertEqual(self.alice.hunger, 31.0)
         self.assertEqual(self.alice.needs["hunger"], 31.0)
         self.assertEqual(self.alice.energy, 99.4)
         self.assertEqual(self.alice.needs["energy"], 99.4)
 
-        # Bob's rest action must not modify Alice's state.
         self.assertEqual(self.bob.hunger, 1.0)
         self.assertEqual(self.bob.needs["hunger"], 1.0)
         self.assertEqual(self.bob.energy, 69.4)
         self.assertEqual(self.bob.needs["energy"], 69.4)
 
-        # Each citizen must have processed independently.
         self.assertNotEqual(self.alice.hunger, self.bob.hunger)
         self.assertNotEqual(self.alice.energy, self.bob.energy)
+
+    def test_simulation_owns_shared_world_state(self):
+        self.assertIsNotNone(self.sim.world)
+        self.assertIs(self.sim.world.citizens[0], self.alice)
+        self.assertIs(self.sim.world.citizens[1], self.bob)
+
+    def test_world_tick_tracks_simulation_tick(self):
+        self.sim.start()
+
+        self.assertEqual(self.sim.tick, 0)
+        self.assertEqual(self.sim.world.current_tick, 0)
+
+        self.sim.step()
+
+        self.assertEqual(self.sim.tick, 1)
+        self.assertEqual(self.sim.world.current_tick, 1)
+
+        self.sim.step()
+
+        self.assertEqual(self.sim.tick, 2)
+        self.assertEqual(self.sim.world.current_tick, 2)
+
+    def test_world_context_is_available_to_actions(self):
+        self.sim.start()
+
+        self.alice.add_item("food", 1)
+        self.alice.hunger = 70.0
+        self.alice.needs["hunger"] = 70.0
+
+        self.sim.world.set_resource("food", 10)
+
+        self.sim.step()
+
+        self.assertEqual(self.alice.get_item_quantity("food"), 0)
+        self.assertEqual(self.sim.world.get_resource("food"), 11)
+        self.assertEqual(self.alice.hunger, 31.0)
 
     def test_social_interaction_in_loop(self):
         self.sim.start()
         self.sim.step()
 
-        # Alice and Bob should now have interacted and logged memories
-        alice_memories = [m.text if hasattr(m, 'text') else str(m) for m in self.alice.memories]
-        has_talk_memory = any("conversation" in m.lower() or "talk" in m.lower() for m in alice_memories)
+        alice_memories = [
+            m.text if hasattr(m, "text") else str(m)
+            for m in self.alice.memories
+        ]
+        has_talk_memory = any(
+            "conversation" in m.lower() or "talk" in m.lower()
+            for m in alice_memories
+        )
         self.assertTrue(has_talk_memory)
+
 
 if __name__ == "__main__":
     unittest.main()
