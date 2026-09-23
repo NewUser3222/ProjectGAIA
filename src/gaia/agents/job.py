@@ -10,6 +10,7 @@ class Job:
         production=None,
         wage=0.0,
         energy_cost=0.0,
+        recipe_id=None,
     ):
         if not job_id:
             raise ValueError("Job ID cannot be empty.")
@@ -27,6 +28,7 @@ class Job:
         self.name = name
         self.required_skills = dict(required_skills or {})
         self.production = dict(production or {})
+        self.recipe_id = recipe_id
         self.wage = float(wage)
         self.energy_cost = float(energy_cost)
         self.active = True

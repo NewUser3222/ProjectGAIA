@@ -10,6 +10,7 @@ class Simulation:
         self.tick = 0
         self.is_running = False
         self.citizens = []
+        self.businesses = []
         self.world = WorldState()
         self.decision_engine = DecisionEngine()
 
@@ -18,6 +19,24 @@ class Simulation:
         if citizen and citizen not in self.citizens:
             self.citizens.append(citizen)
             self.world.add_citizen(citizen)
+
+    # Step 60: Add a business to the simulation and world
+    def add_business(self, business):
+        from src.gaia.business import Business
+
+        if not isinstance(business, Business):
+            raise TypeError("Only Business objects can be added to the simulation.")
+
+        if business not in self.businesses:
+            self.businesses.append(business)
+            self.world.add_business(business)
+
+    # Step 60: Remove a business from the simulation and world
+    def remove_business(self, business):
+        if business in self.businesses:
+            self.businesses.remove(business)
+
+        self.world.remove_business(business)
 
     def start(self):
         """Starts the simulation process."""
@@ -45,6 +64,11 @@ class Simulation:
             "world": self.world
         }
 
+        # Step 60: Remove dead employees before business work processing.
+        for business in self.businesses:
+            if business.is_active():
+                business.remove_dead_employees()
+
         # Step 36: Evaluate individual needs and actions for each citizen.
         for citizen in self.citizens:
             if not citizen.is_alive():
@@ -58,25 +82,40 @@ class Simulation:
                 world=self.world
             )
             if action:
-                # Step 55: Paid work requires an available employer.
+                # Step 60: Support both business and legacy citizen employers.
                 if action.action_id == "work":
                     job = citizen.get_job()
-                    employer = None
+                    employer = citizen.get_employer()
 
                     if job is not None and job.wage > 0:
-                        for potential_employer in self.citizens:
-                            if potential_employer is citizen:
+                        # Step 60: Business-employed citizens use their registered employer.
+                        if employer is not None:
+                            if not employer.is_active():
                                 continue
 
-                            if not potential_employer.is_alive():
+                            if not employer.has_employee(citizen):
                                 continue
 
-                            if potential_employer.get_money() >= job.wage:
-                                employer = potential_employer
-                                break
+                            if employer.get_employee_job(citizen) is not job:
+                                continue
 
-                        if employer is None:
-                            continue
+                            if employer.get_money() < job.wage:
+                                continue
+                        else:
+                            # Preserve the legacy citizen-employer economic loop.
+                            for potential_employer in self.citizens:
+                                if potential_employer is citizen:
+                                    continue
+
+                                if not potential_employer.is_alive():
+                                    continue
+
+                                if potential_employer.get_money() >= job.wage:
+                                    employer = potential_employer
+                                    break
+
+                            if employer is None:
+                                continue
 
                         work_context = dict(world_context)
                         work_context["employer"] = employer

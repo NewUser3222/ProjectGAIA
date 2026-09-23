@@ -48,6 +48,7 @@ class Citizen:
 
         # Step 51: Define the citizen's active job
         self.job = None
+        self.employer = None
 
         # Step 22: Store citizen relationships
         self.relationships = []
@@ -230,6 +231,13 @@ class Citizen:
     def clear_job(self):
         self.job = None
         self.occupation = None
+
+    # Step 57: Business employment state
+    def get_employer(self):
+        return self.employer
+
+    def has_employer(self):
+        return self.employer is not None
     def get_occupation(self):
         return self.occupation
     # Step 10: Change a citizen's need level

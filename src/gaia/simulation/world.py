@@ -11,6 +11,7 @@ class WorldState:
 
         # Step 3: Create world entity collections
         self.citizens = []
+        self.businesses = []
         self.buildings = []
 
         # Step 4: Create world resources
@@ -49,6 +50,29 @@ class WorldState:
             raise TypeError("Only Citizen objects can be added to the world.")
 
         self.citizens.append(citizen)
+
+    # Step 60: Add a business to the world
+    def add_business(self, business):
+        from src.gaia.business import Business
+
+        if not isinstance(business, Business):
+            raise TypeError("Only Business objects can be added to the world.")
+
+        if business not in self.businesses:
+            self.businesses.append(business)
+
+    # Step 60: Remove a business from the world
+    def remove_business(self, business):
+        if business in self.businesses:
+            self.businesses.remove(business)
+
+    # Step 60: Get active businesses
+    def get_active_businesses(self):
+        return [
+            business
+            for business in self.businesses
+            if business.is_active()
+        ]
 
     # Step 8: Change a world resource amount
     def change_resource(self, resource_name, amount):

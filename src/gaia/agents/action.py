@@ -193,14 +193,15 @@ class ActionExecutor:
                     "reason": "Citizen does not have enough energy."
                 }
 
-            if not job.production:
+            if not job.production and job.recipe_id is None:
                 return {
                     "success": False,
                     "action": "work",
                     "reason": "Job has no configured production."
                 }
 
-            # Validate every production rule before changing state.
+            # Validate direct job production only.
+            # Recipe-based production validates its own inputs and outputs.
             for resource_name, quantity in job.production.items():
                 if not resource_name:
                     return {
@@ -232,11 +233,26 @@ class ActionExecutor:
                 }
 
             if job.wage > 0 and employer is not None:
-                if not employer.is_alive():
+                # Step 57: Citizens use is_alive(); businesses use is_active().
+                if hasattr(employer, "is_alive"):
+                    if not employer.is_alive():
+                        return {
+                            "success": False,
+                            "action": "work",
+                            "reason": "Wage payer is not alive."
+                        }
+                elif hasattr(employer, "is_active"):
+                    if not employer.is_active():
+                        return {
+                            "success": False,
+                            "action": "work",
+                            "reason": "Wage payer is not active."
+                        }
+                else:
                     return {
                         "success": False,
                         "action": "work",
-                        "reason": "Wage payer is not alive."
+                        "reason": "Invalid wage payer."
                     }
 
                 if employer is citizen:
@@ -253,16 +269,59 @@ class ActionExecutor:
                         "reason": "Wage payer does not have enough money."
                     }
 
-            # Step 53: Apply production only after every work condition passes.
-            for resource_name, quantity in job.production.items():
-                citizen.add_item(resource_name, quantity)
+            # Step 57: Business employment routes production into
+            # the employer's inventory instead of the citizen's inventory.
+            business = citizen.get_employer()
+
+            if business is not None:
+                if not business.is_active():
+                    return {
+                        "success": False,
+                        "action": "work",
+                        "reason": "Employer is not active."
+                    }
+
+                if not business.has_employee(citizen):
+                    return {
+                        "success": False,
+                        "action": "work",
+                        "reason": "Citizen is not an active employee."
+                    }
+
+                if business.get_employee_job(citizen) is not job:
+                    return {
+                        "success": False,
+                        "action": "work",
+                        "reason": "Citizen's business job does not match the assigned job."
+                    }
+
+            # Step 58: Apply production only after all checks pass.
+            if business is not None and job.recipe_id is not None:
+                production_result = business.produce(job.recipe_id)
+
+                if not production_result["success"]:
+                    return {
+                        "success": False,
+                        "action": "work",
+                        "reason": production_result["reason"]
+                    }
+
+                production = dict(production_result["outputs"])
+
+            else:
+                production_target = business if business is not None else citizen
+                production = dict(job.production)
+
+                for resource_name, quantity in production.items():
+                    production_target.add_item(resource_name, quantity)
 
             citizen.energy = max(
                 0.0,
                 citizen.energy - job.energy_cost
             )
 
-            # Step 53: Pay the configured wage only when an explicit payer exists.
+            # Step 57: Businesses can pay wages through the existing
+            # transaction layer.
             wage_paid = 0.0
             if job.wage > 0 and employer is not None:
                 from src.gaia.economy_transactions import EconomicTransaction
@@ -279,7 +338,7 @@ class ActionExecutor:
                 tick = world_context.get("tick", 0)
 
             citizen.add_memory(
-                f"Worked as {job.name} and produced {job.production}.",
+                f"Worked as {job.name} and produced {production}.",
                 tick
             )
 
@@ -287,7 +346,7 @@ class ActionExecutor:
                 "success": True,
                 "action": "work",
                 "job_id": job.job_id,
-                "production": dict(job.production),
+                "production": dict(production),
                 "wage": wage_paid
             }
         if action.action_id == "rest":
