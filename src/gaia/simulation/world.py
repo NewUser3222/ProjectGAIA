@@ -1,5 +1,6 @@
 # Step 1: Import the Citizen entity
 from src.gaia.agents.citizen import Citizen
+from src.gaia.building import Building
 
 
 # Step 2: Define the World State
@@ -50,6 +51,33 @@ class WorldState:
             raise TypeError("Only Citizen objects can be added to the world.")
 
         self.citizens.append(citizen)
+
+
+    # Step 61: Building world management
+    def add_building(self, building):
+        if not isinstance(building, Building):
+            raise TypeError("Only Building objects can be added to the world.")
+
+        if any(
+            existing.building_id == building.building_id
+            for existing in self.buildings
+        ):
+            raise ValueError("A building with this ID already exists in the world.")
+
+        self.buildings.append(building)
+
+    def remove_building(self, building):
+        if building in self.buildings:
+            self.buildings.remove(building)
+
+    def get_building(self, building_id):
+        for building in self.buildings:
+            if building.building_id == building_id:
+                return building
+        return None
+
+    def get_buildings(self):
+        return list(self.buildings)
 
     # Step 60: Add a business to the world
     def add_business(self, business):
