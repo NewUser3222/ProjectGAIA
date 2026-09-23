@@ -349,6 +349,44 @@ class ActionExecutor:
                 "production": dict(production),
                 "wage": wage_paid
             }
+        # Step 63: Execute construction work through the existing action system.
+        if action.action_id == "construct":
+            if not citizen.is_alive():
+                return {
+                    "success": False,
+                    "action": "construct",
+                    "reason": "Dead citizens cannot perform construction work."
+                }
+
+            project = action.requirements.get("project")
+            work_amount = action.requirements.get("work_amount", 10.0)
+
+            if project is None:
+                return {
+                    "success": False,
+                    "action": "construct",
+                    "reason": "Construction project is required."
+                }
+
+            try:
+                result = project.perform_work(
+                    citizen,
+                    work_amount,
+                )
+            except (TypeError, ValueError) as error:
+                return {
+                    "success": False,
+                    "action": "construct",
+                    "reason": str(error)
+                }
+
+            if result["success"]:
+                citizen.add_memory(
+                    f"Performed construction work on {project.project_id}.",
+                    current_tick
+                )
+
+            return result
         if action.action_id == "rest":
             current_energy = citizen.needs.get("energy", citizen.energy)
             citizen.energy = min(100.0, current_energy + 50)
