@@ -15,6 +15,41 @@ class Simulation:
         self.world = WorldState()
         self.decision_engine = DecisionEngine()
 
+    # Step 69: Return all known ancestors through persistent parent IDs
+    def get_ancestors(self, citizen):
+        if citizen is None:
+            raise ValueError("Citizen cannot be None.")
+
+        ancestors = []
+        visited = set()
+
+        def collect(parent_id):
+            if parent_id in visited:
+                return
+
+            visited.add(parent_id)
+
+            parent = next(
+                (
+                    existing
+                    for existing in self.citizens
+                    if existing.citizen_id == parent_id
+                ),
+                None
+            )
+
+            if parent is None:
+                return
+
+            ancestors.append(parent)
+
+            for grandparent_id in parent.get_parents():
+                collect(grandparent_id)
+
+        for parent_id in citizen.get_parents():
+            collect(parent_id)
+
+        return ancestors
     # Step 68: Create a child through the simulation engine
     def create_child(self, parent_a, parent_b, child_id, name, location=None):
         if parent_a is None or parent_b is None:
@@ -31,7 +66,8 @@ class Simulation:
         from src.gaia.agents.citizen import Citizen
 
         child_location = location if location is not None else parent_a.location
-        child = Citizen(child_id, name, age=0, location=child_location)
+        child_generation = max(parent_a.generation, parent_b.generation) + 1
+        child = Citizen(child_id, name, age=0, location=child_location, generation=child_generation)
         child.record_history("Citizen was born.")
 
         child.add_parent(parent_a.citizen_id)
@@ -216,3 +252,5 @@ class Simulation:
 
                 interaction = SocialInteraction("talk", c1, c2)
                 interaction.execute(current_tick=self.tick)
+
+

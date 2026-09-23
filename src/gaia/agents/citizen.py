@@ -5,11 +5,12 @@ DEAD = "dead"
 
 # Step 2: Define the Citizen entity
 class Citizen:
-    def __init__(self, citizen_id, name, age=0, location=(0, 0)):
+    def __init__(self, citizen_id, name, age=0, location=(0, 0), generation=0):
         self.citizen_id = citizen_id
         self.name = name
         self.age = age
         self.location = location
+        self.generation = generation
         self.lifecycle_state = ALIVE
         self.history = []
 
@@ -523,3 +524,4 @@ class Citizen:
             raise ValueError("Relationship does not exist.")
 
         self.relationships.remove(relationship)
+
