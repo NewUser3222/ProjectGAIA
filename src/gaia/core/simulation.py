@@ -1,4 +1,4 @@
-from src.gaia.agents.decision import DecisionEngine
+﻿from src.gaia.agents.decision import DecisionEngine
 from src.gaia.agents.social import SocialInteraction
 from src.gaia.simulation.world import WorldState
 
@@ -11,6 +11,7 @@ class Simulation:
         self.is_running = False
         self.citizens = []
         self.businesses = []
+        self.construction_projects = []
         self.world = WorldState()
         self.decision_engine = DecisionEngine()
 
@@ -37,6 +38,27 @@ class Simulation:
             self.businesses.remove(business)
 
         self.world.remove_business(business)
+
+    # Step 65: Track a construction project in the simulation.
+    def add_construction_project(self, project):
+        from src.gaia.construction import ConstructionProject
+
+        if not isinstance(project, ConstructionProject):
+            raise TypeError(
+                "Only ConstructionProject objects can be added to the simulation."
+            )
+
+        if project not in self.construction_projects:
+            self.construction_projects.append(project)
+
+    # Step 65: Remove a construction project from the simulation.
+    def remove_construction_project(self, project):
+        if project in self.construction_projects:
+            self.construction_projects.remove(project)
+
+    # Step 65: Return tracked construction projects.
+    def get_construction_projects(self):
+        return list(self.construction_projects)
 
     def start(self):
         """Starts the simulation process."""
@@ -68,6 +90,11 @@ class Simulation:
         for business in self.businesses:
             if business.is_active():
                 business.remove_dead_employees()
+
+        # Step 65: Remove dead workers from active construction projects.
+        for project in self.construction_projects:
+            if not project.is_complete():
+                project.remove_dead_workers()
 
         # Step 36: Evaluate individual needs and actions for each citizen.
         for citizen in self.citizens:
