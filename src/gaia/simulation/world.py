@@ -1,6 +1,7 @@
-# Step 1: Import the Citizen entity
 from src.gaia.agents.citizen import Citizen
 from src.gaia.building import Building
+from src.gaia.environment import EnvironmentState
+from src.gaia.transportation import TransportationSystem
 
 
 # Step 2: Define the World State
@@ -14,6 +15,12 @@ class WorldState:
         self.citizens = []
         self.businesses = []
         self.buildings = []
+
+        # Step 71: Create the simulation-owned environment.
+        self.environment = EnvironmentState()
+
+        # Step 73: Create the simulation-owned transportation system.
+        self.transportation = TransportationSystem(self)
 
         # Step 4: Create world resources
         self.resources = {
@@ -51,7 +58,6 @@ class WorldState:
             raise TypeError("Only Citizen objects can be added to the world.")
 
         self.citizens.append(citizen)
-
 
     # Step 61: Building world management
     def add_building(self, building):
@@ -251,9 +257,10 @@ class WorldState:
 
             self.change_resource(resource_name, amount)
 
-    # Step 16: Advance the world's time
+    # Step 16 / Step 72: Advance world time, environment, and resources.
     def advance_tick(self):
         self.current_tick += 1
+        self.environment.advance_tick()
         self.regenerate_resources()
 
     # Step 17: Display basic world information
@@ -262,15 +269,15 @@ class WorldState:
         print(f"World tick: {self.current_tick}")
         print(f"Citizens: {len(self.citizens)}")
         print(f"Buildings: {len(self.buildings)}")
+        print(f"Vehicles: {len(self.transportation.get_vehicles())}")
+        print(f"Season: {self.environment.season}")
+        print(f"Weather: {self.environment.weather}")
+        print(f"Temperature: {self.environment.temperature}")
         print(f"Resources: {self.resources}")
 
 
-# Step 18: Run a basic world test
 if __name__ == "__main__":
     world = WorldState()
-
     world.describe()
-
     world.advance_tick()
-
     world.describe()
