@@ -1,4 +1,4 @@
-﻿from src.gaia.agents.decision import DecisionEngine
+from src.gaia.agents.decision import DecisionEngine
 from src.gaia.agents.social import SocialInteraction
 from src.gaia.simulation.world import WorldState
 
@@ -101,6 +101,11 @@ class Simulation:
             if not citizen.is_alive():
                 continue
 
+            # Step 66: Advance the lifecycle once per simulation tick.
+            citizen.age_up(1)
+
+            if not citizen.is_alive():
+                continue
             citizen.update_needs()
 
             # Step 44: Decisions must observe the current shared world state.
