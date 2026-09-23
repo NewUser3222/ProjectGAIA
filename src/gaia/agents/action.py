@@ -117,6 +117,42 @@ class ActionExecutor:
                 "message": f"Citizen gathered {quantity} {resource_name}."
             }
 
+        # Step 49: Purchase a resource directly from another citizen.
+        if action.action_id == "buy_resource":
+            if world is None:
+                return {
+                    "success": False,
+                    "action": "buy_resource",
+                    "reason": "World context is required for purchasing."
+                }
+
+            seller = action.requirements.get("seller")
+            resource_name = action.requirements.get("resource", "food")
+            quantity = action.requirements.get("quantity", 1)
+            unit_price = action.requirements.get("unit_price")
+
+            if unit_price is None:
+                from src.gaia.economy import get_resource_value
+                unit_price = get_resource_value(resource_name)
+
+            from src.gaia.economy_transactions import EconomicTransaction
+
+            result = EconomicTransaction.purchase_resource(
+                citizen,
+                seller,
+                resource_name,
+                quantity,
+                unit_price
+            )
+
+            if result.success and hasattr(citizen, "add_memory"):
+                citizen.add_memory(
+                    f"Purchased {quantity} {resource_name}.",
+                    current_tick
+                )
+
+            return result.to_dict()
+
         # Step 6: Execute the rest action
         if action.action_id == "rest":
             current_energy = citizen.needs.get("energy", citizen.energy)

@@ -62,6 +62,39 @@ class DecisionEngine:
                 )
             )
 
+        # Step 49: Consider direct peer-to-peer food purchases when gathering
+        # is unavailable. Economic behavior remains optional.
+        if hunger > 50 and citizen.get_item_quantity("food") <= 0 and world is not None:
+            for seller in world.citizens:
+                if seller is citizen or not seller.is_alive():
+                    continue
+
+                if seller.get_item_quantity("food") <= 0:
+                    continue
+
+                if citizen.get_money() <= 0:
+                    continue
+
+                from src.gaia.economy import get_resource_value
+
+                food_price = get_resource_value("food")
+
+                if citizen.get_money() >= food_price:
+                    options.append(
+                        ActionOption(
+                            "buy_resource",
+                            "Buy Food",
+                            urgency_score=float(hunger),
+                            requirements={
+                                "seller": seller,
+                                "resource": "food",
+                                "quantity": 1,
+                                "unit_price": food_price
+                            }
+                        )
+                    )
+                    break
+
         options.sort(
             key=lambda x: x.urgency_score,
             reverse=True

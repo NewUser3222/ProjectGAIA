@@ -344,6 +344,19 @@ class Citizen:
     def get_money(self):
         return self.money
 
+    # Step 46: Calculate the economic value of one resource quantity
+    def get_resource_value(self, resource_name, quantity=1):
+        from src.gaia.economy import calculate_resource_value
+
+        return calculate_resource_value(resource_name, quantity)
+
+    # Step 46: Calculate the total configured economic value of inventory
+    def get_inventory_value(self):
+        from src.gaia.economy import calculate_inventory_value
+
+        return calculate_inventory_value(self.inventory)
+
+
     # Step 29: Record an event in the citizen's history
     # Step 29: Add a memory to the citizen
     def add_memory(self, event, tick):
