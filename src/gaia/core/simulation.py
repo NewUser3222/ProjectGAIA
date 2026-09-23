@@ -58,11 +58,46 @@ class Simulation:
                 world=self.world
             )
             if action:
-                self.decision_engine.execute_action(
-                    citizen,
-                    action,
-                    world_context=world_context
-                )
+                # Step 55: Paid work requires an available employer.
+                if action.action_id == "work":
+                    job = citizen.get_job()
+                    employer = None
+
+                    if job is not None and job.wage > 0:
+                        for potential_employer in self.citizens:
+                            if potential_employer is citizen:
+                                continue
+
+                            if not potential_employer.is_alive():
+                                continue
+
+                            if potential_employer.get_money() >= job.wage:
+                                employer = potential_employer
+                                break
+
+                        if employer is None:
+                            continue
+
+                        work_context = dict(world_context)
+                        work_context["employer"] = employer
+
+                        self.decision_engine.execute_action(
+                            citizen,
+                            action,
+                            world_context=work_context
+                        )
+                    else:
+                        self.decision_engine.execute_action(
+                            citizen,
+                            action,
+                            world_context=world_context
+                        )
+                else:
+                    self.decision_engine.execute_action(
+                        citizen,
+                        action,
+                        world_context=world_context
+                    )
 
         # Step 40: Social interactions only occur between active citizens.
         active_citizens = [

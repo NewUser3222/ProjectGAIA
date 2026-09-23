@@ -80,6 +80,26 @@ class EconomicTransaction:
             amount=amount
         )
 
+
+    @staticmethod
+    def pay_wage(payer, worker, amount):
+        EconomicTransaction._validate_participants(payer, worker)
+
+        if amount <= 0:
+            raise ValueError("Wage must be greater than zero.")
+
+        if payer.get_money() < amount:
+            raise ValueError("Payer does not have enough money.")
+
+        payer.change_money(-amount)
+        worker.change_money(amount)
+
+        return TransactionResult(
+            success=True,
+            transaction_type="wage",
+            amount=float(amount)
+        )
+
     @staticmethod
     def purchase_resource(
         buyer,

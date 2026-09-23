@@ -95,6 +95,20 @@ class DecisionEngine:
                     )
                     break
 
+        # Step 55: Work is an optional low-priority economic action.
+        if citizen.has_active_job():
+            job = citizen.get_job()
+
+            if citizen.can_perform_job(job):
+                if citizen.energy >= job.energy_cost:
+                    options.append(
+                        ActionOption(
+                            "work",
+                            "Work",
+                            urgency_score=20.0
+                        )
+                    )
+
         options.sort(
             key=lambda x: x.urgency_score,
             reverse=True

@@ -154,6 +154,142 @@ class ActionExecutor:
             return result.to_dict()
 
         # Step 6: Execute the rest action
+        # Step 52: Execute configured job work and production
+        if action.action_id == "work":
+            if not citizen.is_alive():
+                return {
+                    "success": False,
+                    "action": "work",
+                    "reason": "Dead citizens cannot work."
+                }
+
+            job = citizen.get_job()
+
+            if job is None:
+                return {
+                    "success": False,
+                    "action": "work",
+                    "reason": "Citizen has no job."
+                }
+
+            if not citizen.has_active_job():
+                return {
+                    "success": False,
+                    "action": "work",
+                    "reason": "Citizen does not have an active job."
+                }
+
+            if not job.is_citizen_eligible(citizen):
+                return {
+                    "success": False,
+                    "action": "work",
+                    "reason": "Citizen is not eligible for this job."
+                }
+
+            if citizen.energy < job.energy_cost:
+                return {
+                    "success": False,
+                    "action": "work",
+                    "reason": "Citizen does not have enough energy."
+                }
+
+            if not job.production:
+                return {
+                    "success": False,
+                    "action": "work",
+                    "reason": "Job has no configured production."
+                }
+
+            # Validate every production rule before changing state.
+            for resource_name, quantity in job.production.items():
+                if not resource_name:
+                    return {
+                        "success": False,
+                        "action": "work",
+                        "reason": "Production resource cannot be empty."
+                    }
+
+                if quantity <= 0:
+                    return {
+                        "success": False,
+                        "action": "work",
+                        "reason": "Production quantity must be positive."
+                    }
+
+            # Step 53: Resolve the explicit wage payer before mutation.
+            employer = None
+            if world_context:
+                employer = world_context.get("employer")
+
+            # Step 53: A wage requires an explicit payer when no work context exists.
+            # Legacy work calls may provide a context containing only tick; those
+            # calls continue to support production without performing payroll.
+            if job.wage > 0 and world_context is None:
+                return {
+                    "success": False,
+                    "action": "work",
+                    "reason": "No wage payer provided."
+                }
+
+            if job.wage > 0 and employer is not None:
+                if not employer.is_alive():
+                    return {
+                        "success": False,
+                        "action": "work",
+                        "reason": "Wage payer is not alive."
+                    }
+
+                if employer is citizen:
+                    return {
+                        "success": False,
+                        "action": "work",
+                        "reason": "Citizen cannot pay their own wage."
+                    }
+
+                if employer.get_money() < job.wage:
+                    return {
+                        "success": False,
+                        "action": "work",
+                        "reason": "Wage payer does not have enough money."
+                    }
+
+            # Step 53: Apply production only after every work condition passes.
+            for resource_name, quantity in job.production.items():
+                citizen.add_item(resource_name, quantity)
+
+            citizen.energy = max(
+                0.0,
+                citizen.energy - job.energy_cost
+            )
+
+            # Step 53: Pay the configured wage only when an explicit payer exists.
+            wage_paid = 0.0
+            if job.wage > 0 and employer is not None:
+                from src.gaia.economy_transactions import EconomicTransaction
+
+                EconomicTransaction.pay_wage(
+                    employer,
+                    citizen,
+                    job.wage
+                )
+                wage_paid = job.wage
+
+            tick = 0
+            if world_context:
+                tick = world_context.get("tick", 0)
+
+            citizen.add_memory(
+                f"Worked as {job.name} and produced {job.production}.",
+                tick
+            )
+
+            return {
+                "success": True,
+                "action": "work",
+                "job_id": job.job_id,
+                "production": dict(job.production),
+                "wage": wage_paid
+            }
         if action.action_id == "rest":
             current_energy = citizen.needs.get("energy", citizen.energy)
             citizen.energy = min(100.0, current_energy + 50)

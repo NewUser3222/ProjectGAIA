@@ -46,6 +46,9 @@ class Citizen:
         # Step 8: Define the citizen's occupation
         self.occupation = None
 
+        # Step 51: Define the citizen's active job
+        self.job = None
+
         # Step 22: Store citizen relationships
         self.relationships = []
         # Step 8: Define the citizen's memories
@@ -183,6 +186,50 @@ class Citizen:
         self.occupation = occupation
 
     # Step 13: Get the citizen's current occupation
+    # Step 51: Assign a configured job to this citizen
+    def set_job(self, job):
+        from src.gaia.agents.job import Job
+
+        if not isinstance(job, Job):
+            raise ValueError("Job must be a Job instance.")
+
+        if not self.is_alive():
+            raise ValueError("Dead citizens cannot be assigned active jobs.")
+
+        if not job.active:
+            raise ValueError("Cannot assign an inactive job.")
+
+        if not job.is_citizen_eligible(self):
+            raise ValueError("Citizen does not meet the job requirements.")
+
+        self.job = job
+        self.occupation = job.name
+
+    # Step 51: Get the citizen's active job
+    def get_job(self):
+        return self.job
+
+    # Step 51: Check whether the citizen has an active job
+    def has_active_job(self):
+        return (
+            self.is_alive()
+            and self.job is not None
+            and self.job.active
+        )
+
+    # Step 51: Check whether the citizen can perform a job
+    def can_perform_job(self, job):
+        from src.gaia.agents.job import Job
+
+        if not isinstance(job, Job):
+            return False
+
+        return job.active and job.is_citizen_eligible(self)
+
+    # Step 51: Clear the citizen's active job
+    def clear_job(self):
+        self.job = None
+        self.occupation = None
     def get_occupation(self):
         return self.occupation
     # Step 10: Change a citizen's need level
