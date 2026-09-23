@@ -50,6 +50,10 @@ class Citizen:
         self.job = None
         self.employer = None
 
+        # Step 68: Store persistent family relationships
+        self.parents = []
+        self.children = []
+
         # Step 22: Store citizen relationships
         self.relationships = []
         # Step 8: Define the citizen's memories
@@ -432,6 +436,40 @@ class Citizen:
         self.history.append(event)
 
 # Step 23: Add a relationship with another citizen
+    # Step 68: Add a parent relationship
+    def add_parent(self, parent_id):
+        if not parent_id:
+            raise ValueError("Parent ID cannot be empty.")
+        if parent_id == self.citizen_id:
+            raise ValueError("A citizen cannot be their own parent.")
+        if parent_id not in self.parents:
+            self.parents.append(parent_id)
+
+    # Step 68: Add a child relationship
+    def add_child(self, child_id):
+        if not child_id:
+            raise ValueError("Child ID cannot be empty.")
+        if child_id == self.citizen_id:
+            raise ValueError("A citizen cannot be their own child.")
+        if child_id not in self.children:
+            self.children.append(child_id)
+
+    # Step 68: Check whether a citizen has a parent
+    def has_parent(self, parent_id):
+        return parent_id in self.parents
+
+    # Step 68: Check whether a citizen has a child
+    def has_child(self, child_id):
+        return child_id in self.children
+
+    # Step 68: Return persistent parent IDs
+    def get_parents(self):
+        return list(self.parents)
+
+    # Step 68: Return persistent child IDs
+    def get_children(self):
+        return list(self.children)
+
     def add_relationship(self, citizen_id, relationship_type):
         if not citizen_id:
             raise ValueError("Citizen ID cannot be empty.")

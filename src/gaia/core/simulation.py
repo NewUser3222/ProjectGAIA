@@ -15,6 +15,39 @@ class Simulation:
         self.world = WorldState()
         self.decision_engine = DecisionEngine()
 
+    # Step 68: Create a child through the simulation engine
+    def create_child(self, parent_a, parent_b, child_id, name, location=None):
+        if parent_a is None or parent_b is None:
+            raise ValueError("Two parents are required.")
+        if parent_a is parent_b:
+            raise ValueError("Two distinct parents are required.")
+        if not parent_a.is_alive() or not parent_b.is_alive():
+            raise ValueError("Both parents must be alive.")
+        if not child_id:
+            raise ValueError("Child ID cannot be empty.")
+        if any(citizen.citizen_id == child_id for citizen in self.citizens):
+            raise ValueError("Citizen ID already exists.")
+
+        from src.gaia.agents.citizen import Citizen
+
+        child_location = location if location is not None else parent_a.location
+        child = Citizen(child_id, name, age=0, location=child_location)
+        child.record_history("Citizen was born.")
+
+        child.add_parent(parent_a.citizen_id)
+        child.add_parent(parent_b.citizen_id)
+
+        parent_a.add_child(child.citizen_id)
+        parent_b.add_child(child.citizen_id)
+
+        parent_a.add_relationship(child.citizen_id, "child")
+        parent_b.add_relationship(child.citizen_id, "child")
+        child.add_relationship(parent_a.citizen_id, "parent")
+        child.add_relationship(parent_b.citizen_id, "parent")
+
+        self.add_citizen(child)
+        return child
+
     def add_citizen(self, citizen):
         """Adds a citizen to the simulation and its world state."""
         if citizen and citizen not in self.citizens:
