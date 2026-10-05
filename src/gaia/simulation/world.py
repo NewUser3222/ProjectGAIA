@@ -249,13 +249,35 @@ class WorldState:
         citizen.remove_item(resource_name, quantity)
         citizen.change_need(need_name, quantity)
 
-    # Step 42: Regenerate only configured renewable resources
+    # Step 76: Regenerate resources using the environment for the current tick.
     def regenerate_resources(self):
+        seasonal_regeneration = {
+            "spring": {"food": 2, "wood": 2},
+            "summer": {"food": 2, "wood": 2},
+            "autumn": {"food": 1, "wood": 1},
+            "winter": {"food": 0, "wood": 0},
+        }
+        weather_regeneration = {
+            "clear": {"water": 1},
+            "cloudy": {"water": 2},
+            "rain": {"water": 3},
+            "snow": {"water": 2},
+        }
+
+        environmental_amounts = {}
+        environmental_amounts.update(
+            seasonal_regeneration[self.environment.season]
+        )
+        environmental_amounts.update(
+            weather_regeneration[self.environment.weather]
+        )
+
         for resource_name, amount in self.resource_regeneration.items():
             if amount <= 0:
                 continue
 
-            self.change_resource(resource_name, amount)
+            effective_amount = environmental_amounts.get(resource_name, amount)
+            self.change_resource(resource_name, effective_amount)
 
     # Step 16 / Step 72: Advance world time, environment, and resources.
     def advance_tick(self):

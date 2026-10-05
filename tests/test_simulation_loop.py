@@ -101,7 +101,7 @@ class TestSimulationLoopIntegration(unittest.TestCase):
         self.sim.step()
 
         self.assertEqual(self.alice.get_item_quantity("food"), 0)
-        self.assertEqual(self.sim.world.get_resource("food"), 11)
+        self.assertEqual(self.sim.world.get_resource("food"), 12)
         self.assertEqual(self.alice.hunger, 31.0)
 
     def test_social_interaction_in_loop(self):

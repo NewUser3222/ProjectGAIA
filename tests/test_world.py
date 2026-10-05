@@ -121,9 +121,9 @@ class TestWorldState(unittest.TestCase):
 
         world.advance_tick()
 
-        self.assertEqual(world.get_resource("food"), 1)
+        self.assertEqual(world.get_resource("food"), 2)
         self.assertEqual(world.get_resource("water"), 2)
-        self.assertEqual(world.get_resource("wood"), 1)
+        self.assertEqual(world.get_resource("wood"), 2)
         self.assertEqual(world.get_resource("stone"), 0)
         self.assertEqual(world.get_resource("metal"), 0)
         self.assertEqual(world.get_resource("energy"), 1)
@@ -136,9 +136,9 @@ class TestWorldState(unittest.TestCase):
         world.advance_tick()
         world.advance_tick()
 
-        self.assertEqual(world.get_resource("food"), 3)
-        self.assertEqual(world.get_resource("water"), 6)
-        self.assertEqual(world.get_resource("wood"), 3)
+        self.assertEqual(world.get_resource("food"), 6)
+        self.assertEqual(world.get_resource("water"), 7)
+        self.assertEqual(world.get_resource("wood"), 6)
         self.assertEqual(world.get_resource("energy"), 3)
 
     # Step 20: Run the tests

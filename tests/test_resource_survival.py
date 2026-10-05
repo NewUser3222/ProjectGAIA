@@ -186,7 +186,7 @@ class TestResourceSurvival(unittest.TestCase):
 
         self.assertEqual(alice.get_item_quantity("food"), 1)
         self.assertEqual(bob.get_item_quantity("food"), 1)
-        self.assertEqual(sim.world.get_resource("food"), 0)
+        self.assertEqual(sim.world.get_resource("food"), 1)
 
         sim.step()
 

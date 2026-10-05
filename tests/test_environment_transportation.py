@@ -40,6 +40,71 @@ def test_environment_state_persists_in_world_across_ticks():
     assert simulation.world.environment.season == "spring"
 
 
+def test_environmental_regeneration_is_deterministic():
+    first = Simulation().world
+    second = Simulation().world
+
+    for _ in range(8):
+        first.advance_tick()
+        second.advance_tick()
+        assert first.resources == second.resources
+
+
+def test_season_changes_food_and_wood_regeneration():
+    spring_world = Simulation().world
+    winter_world = Simulation().world
+    spring_world.environment.season = "spring"
+    winter_world.environment.season = "winter"
+
+    spring_world.regenerate_resources()
+    winter_world.regenerate_resources()
+
+    assert spring_world.get_resource("food") == 2
+    assert spring_world.get_resource("wood") == 2
+    assert winter_world.get_resource("food") == 0
+    assert winter_world.get_resource("wood") == 0
+
+
+def test_weather_changes_water_regeneration():
+    clear_world = Simulation().world
+    rain_world = Simulation().world
+    clear_world.environment.weather = "clear"
+    rain_world.environment.weather = "rain"
+
+    clear_world.regenerate_resources()
+    rain_world.regenerate_resources()
+
+    assert clear_world.get_resource("water") == 1
+    assert rain_world.get_resource("water") == 3
+
+
+def test_environmental_regeneration_respects_resource_caps():
+    world = Simulation().world
+    world.set_resource("food", 999)
+    world.set_resource("water", 999)
+    world.set_resource("wood", 999)
+    world.environment.season = "spring"
+    world.environment.weather = "rain"
+
+    world.regenerate_resources()
+
+    assert world.get_resource("food") == 1000
+    assert world.get_resource("water") == 1000
+    assert world.get_resource("wood") == 1000
+
+
+def test_world_tick_regenerates_after_advancing_environment():
+    world = Simulation().world
+
+    world.advance_tick()
+
+    assert world.environment.day == 2
+    assert world.environment.weather == "cloudy"
+    assert world.get_resource("food") == 2
+    assert world.get_resource("water") == 2
+    assert world.get_resource("wood") == 2
+
+
 def test_vehicle_creation_and_registration():
     simulation = Simulation()
     vehicle = Vehicle("VEH-001", "car", location=(10, 10))
