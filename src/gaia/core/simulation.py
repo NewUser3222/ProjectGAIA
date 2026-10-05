@@ -175,6 +175,10 @@ class Simulation:
 
             if not citizen.is_alive():
                 continue
+            # Step 77: World conditions affect exposed citizens independently.
+            self.world.apply_environmental_effects(citizen)
+            if not citizen.is_alive():
+                continue
             citizen.update_needs()
 
             # Step 44: Decisions must observe the current shared world state.

@@ -2,6 +2,7 @@ from src.gaia.agents.citizen import Citizen
 from src.gaia.environment import EnvironmentState
 from src.gaia.core.simulation import Simulation
 from src.gaia.vehicle import Vehicle
+from src.gaia.building import Building
 
 
 def test_environment_has_deterministic_initial_state():
@@ -103,6 +104,59 @@ def test_world_tick_regenerates_after_advancing_environment():
     assert world.get_resource("food") == 2
     assert world.get_resource("water") == 2
     assert world.get_resource("wood") == 2
+
+
+def test_extreme_temperature_harms_exposed_citizen():
+    simulation = Simulation()
+    citizen = Citizen("C-ENV-1", "Exposed", age=30)
+    simulation.add_citizen(citizen)
+    simulation.world.environment.temperature = -10
+
+    damage = simulation.world.apply_environmental_effects(citizen)
+
+    assert damage == 2.0
+    assert citizen.health == 98
+
+
+def test_active_occupied_building_reduces_extreme_temperature_exposure():
+    simulation = Simulation()
+    citizen = Citizen("C-ENV-2", "Sheltered", age=30)
+    building = Building(
+        "BLD-ENV-1", "house", (0, 0), construction_status="completed"
+    )
+    simulation.add_citizen(citizen)
+    simulation.world.add_building(building)
+    building.add_occupant(citizen)
+    simulation.world.environment.temperature = -10
+
+    damage = simulation.world.apply_environmental_effects(citizen)
+
+    assert damage == 0.5
+    assert citizen.health == 99.5
+
+
+def test_environmental_effects_ignore_dead_citizens_and_mild_conditions():
+    simulation = Simulation()
+    citizen = Citizen("C-ENV-3", "Unaffected", age=30)
+    simulation.add_citizen(citizen)
+
+    assert simulation.world.apply_environmental_effects(citizen) == 0
+    citizen.die()
+    simulation.world.environment.temperature = 40
+    assert simulation.world.apply_environmental_effects(citizen) == 0
+    assert citizen.health == 100
+
+
+def test_simulation_tick_applies_weather_exposure_to_each_citizen():
+    simulation = Simulation()
+    exposed = Citizen("C-ENV-4", "Exposed", age=30)
+    simulation.add_citizen(exposed)
+    simulation.world.environment.day = 270
+    simulation.start()
+
+    simulation.step()
+
+    assert exposed.health == 99
 
 
 def test_vehicle_creation_and_registration():

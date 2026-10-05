@@ -279,6 +279,35 @@ class WorldState:
             effective_amount = environmental_amounts.get(resource_name, amount)
             self.change_resource(resource_name, effective_amount)
 
+    # Step 77: Apply environmental exposure through world-owned conditions.
+    def apply_environmental_effects(self, citizen):
+        """Apply temperature exposure, reduced by an occupied active building."""
+        if not isinstance(citizen, Citizen):
+            raise TypeError("Environmental effects require a Citizen object.")
+
+        if not citizen.is_alive():
+            return 0
+
+        temperature = self.environment.temperature
+        if temperature <= 0:
+            damage = min(5.0, 1.0 + abs(temperature) / 10.0)
+        elif temperature >= 35:
+            damage = min(5.0, 1.0 + (temperature - 35) / 10.0)
+        else:
+            return 0
+
+        sheltered = any(
+            building.is_active() and building.has_occupant(citizen)
+            for building in self.buildings
+        )
+        if sheltered:
+            damage *= 0.25
+
+        citizen.change_health(-damage)
+        if citizen.health <= 0:
+            citizen.die()
+        return damage
+
     # Step 16 / Step 72: Advance world time, environment, and resources.
     def advance_tick(self):
         self.current_tick += 1
