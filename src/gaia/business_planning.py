@@ -102,13 +102,31 @@ class BusinessProductionPlanner:
                         )
 
             expected_revenue = 0.0
+            expected_sales = {}
             for resource_name, quantity in recipe.outputs.items():
                 market_supply = world.get_market_supply(resource_name)
                 output_price = world.get_market_price(
                     resource_name,
                     supply=max(market_supply + quantity, quantity),
                 )
-                expected_revenue += quantity * output_price
+                demand_rate = world.market_observations.get_demand_rate(
+                    resource_name
+                )
+                existing_stock = max(
+                    0.0,
+                    business.get_item_quantity(resource_name)
+                    - recipe.inputs.get(resource_name, 0.0),
+                )
+                if demand_rate is None:
+                    # Let a business with no stock establish its first supply.
+                    demand_rate = quantity if existing_stock <= 0 else 0.0
+                expected_sold = max(
+                    0.0,
+                    min(existing_stock + quantity, demand_rate)
+                    - min(existing_stock, demand_rate),
+                )
+                expected_sales[resource_name] = expected_sold
+                expected_revenue += expected_sold * output_price
         except (TypeError, ValueError, OverflowError):
             return None
 
@@ -141,6 +159,7 @@ class BusinessProductionPlanner:
             "purchases": purchases,
             "inputs": dict(recipe.inputs),
             "outputs": dict(recipe.outputs),
+            "expected_sales": expected_sales,
         }
 
     @staticmethod

@@ -69,6 +69,7 @@ def test_business_selects_the_recipe_with_the_best_current_market_margin():
     assert first_plan["recipe_id"] == "metal"
 
     simulation.world.market_observations.record_trade("food", 100)
+    simulation.world.market_observations.record_sale("food", 100)
     simulation.world.market_observations.record_production("metal", 1000)
     simulation.world.advance_tick()
 
@@ -268,3 +269,35 @@ def test_citizen_decisions_ignore_business_inventory_reserved_for_production():
     )
 
     assert all(option.action_id != "buy_resource" for option in options)
+
+
+def test_business_production_tracks_completed_demand_and_unsold_stock():
+    simulation = Simulation()
+    business = Business("foodworks", "Foodworks")
+    business.add_item("wood", 1)
+    worker = Citizen("worker", "Worker", age=30)
+    business.add_recipe(
+        ProductionRecipe(
+            "food", "Bake Food", inputs={"wood": 1}, outputs={"food": 2}
+        )
+    )
+    job = Job("baker", "Baker", recipe_id="food")
+    business.add_job(job)
+    business.employ(worker, job)
+    simulation.add_citizen(worker)
+    simulation.add_business(business)
+
+    simulation.world.market_observations.record_production("food", 2)
+    simulation.world.advance_tick()
+    no_demand_plan = business.evaluate_production_plan(simulation.world)
+    assert no_demand_plan["success"] is False
+
+    simulation.world.market_observations.record_sale("food", 2)
+    simulation.world.advance_tick()
+    demand_plan = business.evaluate_production_plan(simulation.world)
+    assert demand_plan["success"] is True
+    assert demand_plan["expected_sales"]["food"] == 1
+
+    business.add_item("food", 1)
+    inventory_plan = business.evaluate_production_plan(simulation.world)
+    assert inventory_plan["success"] is False

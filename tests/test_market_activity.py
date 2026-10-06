@@ -19,11 +19,13 @@ def test_world_market_observations_roll_completed_tick_activity():
     observations.record_production("food", 4)
     observations.record_consumption("food", 2)
     observations.record_trade("food", 3)
+    observations.record_sale("food", 1)
 
     assert observations.get_recent("food") == {
         "production": 0.0,
         "consumption": 0.0,
         "trade": 0.0,
+        "sales": 0.0,
     }
 
     simulation.world.advance_tick()
@@ -33,9 +35,24 @@ def test_world_market_observations_roll_completed_tick_activity():
         "production": 4.0,
         "consumption": 2.0,
         "trade": 3.0,
+        "sales": 1.0,
     }
     recent["trade"] = 1000
     assert observations.get_recent("food")["trade"] == 3.0
+
+
+def test_market_demand_rate_uses_completed_sales_and_consumption_only():
+    observations = Simulation().world.market_observations
+    observations.record_sale("food", 4)
+    assert observations.get_demand_rate("food") == 0
+
+    observations.advance_tick()
+    assert observations.get_demand_rate("food") == 4
+
+    observations.record_trade("food", 6)
+    assert observations.get_demand_rate("food") == 4
+    observations.advance_tick()
+    assert observations.get_demand_rate("food") == 2
 
 
 def test_market_observation_window_expires_old_activity():
@@ -138,6 +155,7 @@ def test_successful_citizen_trade_and_consumption_change_world_quote():
     recent = simulation.world.market_observations.get_recent("food")
     assert recent["trade"] == 1
     assert recent["consumption"] == 1
+    assert recent["sales"] == 1
     assert simulation.world.get_market_price("food", supply=4) == 15
 
 
@@ -152,10 +170,12 @@ def test_business_commerce_records_trades_used_by_later_quotes():
 
     result = buyer.buy_resource(seller, "wood", 2)
     assert result["success"]
+    assert simulation.world.market_observations.get_demand_rate("wood") == 0
 
     simulation.world.advance_tick()
 
     assert simulation.world.market_observations.get_recent("wood")["trade"] == 2
+    assert simulation.world.market_observations.get_recent("wood")["sales"] == 2
     assert BusinessCommerce.calculate_price("wood", seller) == 6.25
 
 
@@ -181,6 +201,7 @@ def test_failed_production_and_trade_do_not_create_market_activity():
         "production": {},
         "consumption": {},
         "trade": {},
+        "sales": {},
     }
 
 

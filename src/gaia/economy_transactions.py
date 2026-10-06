@@ -224,6 +224,30 @@ class EconomicTransaction:
                 reason="Transaction would create a non-finite balance."
             )
 
+        market_observations = getattr(buyer, "_market_observations", None)
+        if (
+            market_observations is not None
+            and market_observations
+            is getattr(seller, "_market_observations", None)
+        ):
+            trade_total = (
+                market_observations._current["trade"].get(resource_name, 0.0)
+                + quantity
+            )
+            sales_total = (
+                market_observations._current["sales"].get(resource_name, 0.0)
+                + quantity
+            )
+            if not math.isfinite(trade_total) or not math.isfinite(sales_total):
+                return TransactionResult(
+                    False,
+                    "resource_purchase",
+                    amount=total_cost,
+                    resource=resource_name,
+                    quantity=quantity,
+                    reason="Market activity total would be non-finite."
+                )
+
         # Validate everything before mutating either participant.
         seller.remove_item(resource_name, quantity)
         buyer.add_item(resource_name, quantity)
@@ -231,13 +255,13 @@ class EconomicTransaction:
         buyer.change_money(-total_cost)
         seller.change_money(total_cost)
 
-        market_observations = getattr(buyer, "_market_observations", None)
         if (
             market_observations is not None
             and market_observations
             is getattr(seller, "_market_observations", None)
         ):
             market_observations.record_trade(resource_name, quantity)
+            market_observations.record_sale(resource_name, quantity)
 
         return TransactionResult(
             True,

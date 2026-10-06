@@ -108,6 +108,7 @@ class BusinessCommerce:
         seller_credits = {}
         buyer_additions = {}
         observer_trades = {}
+        observer_sales = {}
         quoted_unit_prices = {}
         total_amount = 0.0
 
@@ -151,6 +152,7 @@ class BusinessCommerce:
             ):
                 observer_key = (observer, resource_name)
                 observer_trades[observer_key] = observer_trades.get(observer_key, 0.0) + quantity
+                observer_sales[observer_key] = observer_sales.get(observer_key, 0.0) + quantity
 
         for (seller, resource_name), quantity in inventory_debits.items():
             available = (
@@ -205,6 +207,13 @@ class BusinessCommerce:
             current = observer._current["trade"].get(resource_name, 0.0)
             if not math.isfinite(current + quantity):
                 return {"success": False, "reason": "Market trade total would be non-finite.", "amount": 0.0}
+            current_sales = observer._current["sales"].get(resource_name, 0.0)
+            if not math.isfinite(current_sales + observer_sales[(observer, resource_name)]):
+                return {
+                    "success": False,
+                    "reason": "Market sales total would be non-finite.",
+                    "amount": 0.0,
+                }
 
         # All state and observation updates are validated before the first mutation.
         for (seller, resource_name), quantity in inventory_debits.items():
@@ -216,6 +225,10 @@ class BusinessCommerce:
             seller.change_money(amount)
         for (observer, resource_name), quantity in observer_trades.items():
             observer.record_trade(resource_name, quantity)
+            observer.record_sale(
+                resource_name,
+                observer_sales[(observer, resource_name)],
+            )
 
         results = []
         for seller, resource_name, quantity in prepared:
@@ -305,6 +318,27 @@ class BusinessCommerce:
                 "amount": 0.0,
             }
 
+        market_observations = getattr(buyer, "_market_observations", None)
+        if (
+            market_observations is not None
+            and market_observations
+            is getattr(seller, "_market_observations", None)
+        ):
+            trade_total = (
+                market_observations._current["trade"].get(resource_name, 0.0)
+                + quantity
+            )
+            sales_total = (
+                market_observations._current["sales"].get(resource_name, 0.0)
+                + quantity
+            )
+            if not math.isfinite(trade_total) or not math.isfinite(sales_total):
+                return {
+                    "success": False,
+                    "reason": "Market activity total would be non-finite.",
+                    "amount": 0.0,
+                }
+
         # Step 59: No mutation until every validation succeeds.
         seller.remove_item(resource_name, quantity)
         buyer.add_item(resource_name, quantity)
@@ -312,13 +346,13 @@ class BusinessCommerce:
         buyer.change_money(-total_price)
         seller.change_money(total_price)
 
-        market_observations = getattr(buyer, "_market_observations", None)
         if (
             market_observations is not None
             and market_observations
             is getattr(seller, "_market_observations", None)
         ):
             market_observations.record_trade(resource_name, quantity)
+            market_observations.record_sale(resource_name, quantity)
 
         return {
             "success": True,

@@ -78,11 +78,12 @@ class MarketObservations:
     """Seven-tick rolling totals for completed economic activity."""
 
     WINDOW_TICKS = 7
-    ACTIVITY_TYPES = ("production", "consumption", "trade")
+    ACTIVITY_TYPES = ("production", "consumption", "trade", "sales")
 
     def __init__(self):
         self._current = {activity: {} for activity in self.ACTIVITY_TYPES}
         self._history = deque(maxlen=self.WINDOW_TICKS)
+        self._observed_resources = set()
 
     def _record(self, activity, resource_name, quantity):
         if activity not in self.ACTIVITY_TYPES:
@@ -104,6 +105,7 @@ class MarketObservations:
         if not math.isfinite(updated_total):
             raise ValueError("Market activity total must remain finite.")
         self._current[activity][resource_name] = updated_total
+        self._observed_resources.add(resource_name)
 
     def record_production(self, resource_name, quantity):
         self._record("production", resource_name, quantity)
@@ -113,6 +115,10 @@ class MarketObservations:
 
     def record_trade(self, resource_name, quantity):
         self._record("trade", resource_name, quantity)
+
+    def record_sale(self, resource_name, quantity):
+        """Record completed sales separately from all trade volume."""
+        self._record("sales", resource_name, quantity)
 
     def advance_tick(self):
         """Close the current activity bucket and begin a new simulation tick."""
@@ -130,6 +136,22 @@ class MarketObservations:
                 totals[activity] += tick[activity].get(resource_name, 0.0)
         return totals
 
+    def get_completed_tick_count(self):
+        return len(self._history)
+
+    def get_demand_rate(self, resource_name):
+        """Return observed per-tick demand, or None before any observation."""
+        if resource_name not in self._observed_resources:
+            return None
+
+        recent = self.get_recent(resource_name)
+        observed_demand = max(
+            recent["sales"],
+            recent["consumption"],
+        )
+        tick_count = max(1, len(self._history))
+        return observed_demand / tick_count
+
     def to_dict(self):
         return {
             "window_ticks": self.WINDOW_TICKS,
@@ -145,6 +167,6 @@ class MarketObservations:
                     for tick in self._history
                     for activity in self.ACTIVITY_TYPES
                     for resource in tick[activity]
-                })
+                } | self._observed_resources)
             },
         }
