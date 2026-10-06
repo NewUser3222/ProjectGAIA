@@ -8,14 +8,54 @@ class DecisionEngine:
 
     def __init__(self):
         self.action_executor = ActionExecutor()
+        self._action_providers = []
+        self.register_action_provider(self._construction_actions)
+
+    def register_action_provider(self, provider):
+        """Register a deterministic source of available citizen actions.
+
+        Providers receive ``(citizen, world, context)`` and return action
+        options. They describe possibilities; the Simulation still owns
+        validation and execution.
+        """
+        if not callable(provider):
+            raise TypeError("Action provider must be callable.")
+        if provider in self._action_providers:
+            raise ValueError("Action provider is already registered.")
+        self._action_providers.append(provider)
+
+    @staticmethod
+    def _construction_actions(citizen, world, context):
+        options = []
+        projects = context.get("construction_projects", ())
+        for project in sorted(
+            tuple(projects), key=lambda item: str(item.project_id)
+        ):
+            if project.can_worker_contribute(citizen):
+                options.append(ActionOption(
+                    "construct",
+                    "Work on Construction",
+                    urgency_score=25.0,
+                    requirements={
+                        "project": project,
+                        "work_amount": 10.0,
+                        "destination": tuple(project.location),
+                        "movement_reason": "construction",
+                        "target_kind": "construction",
+                        "target_id": str(project.project_id),
+                    },
+                ))
+        return options
 
     # Step 44: Evaluate citizen needs using actual world circumstances.
-    def evaluate_needs(self, citizen, world=None):
+    def evaluate_needs(self, citizen, world=None, *, context=None):
         """Return valid actions based on needs, inventory, and world resources."""
         options = []
 
         if not hasattr(citizen, "needs") or not citizen.is_alive():
             return options
+
+        context = context or {}
 
         hunger = citizen.needs.get("hunger", 0)
         energy = citizen.needs.get("energy", 100)
@@ -138,6 +178,16 @@ class DecisionEngine:
                                 urgency_score=20.0
                             )
                         )
+        # Extend the available action set through registered providers. Stable
+        # provider order and Python's stable urgency sort make ties repeatable.
+        for provider in tuple(self._action_providers):
+            provided = provider(citizen, world, context)
+            if provided is None:
+                continue
+            for option in provided:
+                if not isinstance(option, ActionOption):
+                    raise TypeError("Action providers must return ActionOption values.")
+                options.append(option)
 
         options.sort(
             key=lambda x: x.urgency_score,
@@ -147,9 +197,9 @@ class DecisionEngine:
         return options
 
     # Step 44: Select the highest-priority valid action.
-    def select_best_action(self, citizen, world=None):
+    def select_best_action(self, citizen, world=None, *, context=None):
         """Return the highest-priority action valid for current circumstances."""
-        options = self.evaluate_needs(citizen, world=world)
+        options = self.evaluate_needs(citizen, world=world, context=context)
         return options[0] if options else None
 
     # Step 5: Preserve the existing execution interface

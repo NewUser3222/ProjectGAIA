@@ -157,6 +157,32 @@ class GAIAGovernor:
                     "Citizen location is outside world bounds.",
                     evidence=(("location", _snapshot_value(citizen.location)),),
                 ))
+            movement = (
+                simulation.get_movement_state(citizen)
+                if hasattr(simulation, "get_movement_state")
+                else None
+            )
+            if movement is not None:
+                intent = movement.intent
+                invalid_state = movement.status not in {
+                    "stationary", "moving", "arrived", "cancelled",
+                }
+                missing_intent = movement.status == "moving" and intent is None
+                invalid_destination = (
+                    intent is not None
+                    and not world.is_valid_location(intent.destination)
+                )
+                if invalid_state or missing_intent or invalid_destination:
+                    findings.append(GovernorFinding(
+                        "abnormal_condition", citizen.citizen_id,
+                        "Citizen movement state is inconsistent or out of bounds.",
+                        evidence=(
+                            ("movement_status", _snapshot_value(movement.status)),
+                            ("destination", _snapshot_value(
+                                intent.destination if intent is not None else None
+                            )),
+                        ),
+                    ))
             health = citizen.health
             if not _is_finite_number(health) or not 0 <= health <= 100:
                 findings.append(GovernorFinding(

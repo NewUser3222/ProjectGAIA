@@ -11,10 +11,19 @@ class ActionOption:
         if not name:
             raise ValueError("Action Name cannot be empty.")
 
+        if isinstance(urgency_score, bool):
+            raise ValueError("Action urgency must be a finite number.")
+        try:
+            urgency_score = float(urgency_score)
+        except (TypeError, ValueError, OverflowError):
+            raise ValueError("Action urgency must be a finite number.")
+        if not math.isfinite(urgency_score):
+            raise ValueError("Action urgency must be a finite number.")
+
         self.action_id = action_id
         self.name = name
         self.urgency_score = urgency_score
-        self.requirements = requirements or {}
+        self.requirements = dict(requirements or {})
 
     # Step 2: Convert the action option to a dictionary
     def to_dict(self):
@@ -22,7 +31,7 @@ class ActionOption:
             "action_id": self.action_id,
             "name": self.name,
             "urgency_score": self.urgency_score,
-            "requirements": self.requirements
+            "requirements": dict(self.requirements)
         }
 
 
@@ -30,10 +39,40 @@ class ActionOption:
 class ActionExecutor:
     """Executes selected actions and applies their state changes."""
 
+    _BUILTIN_ACTION_IDS = frozenset({
+        "eat", "gather", "buy_resource", "work", "construct", "rest",
+    })
+
+    def __init__(self):
+        self._handlers = {}
+
+    def register_handler(self, action_id, handler):
+        """Register an executor for a new action kind.
+
+        Built-in action IDs stay owned by this executor so extensions cannot
+        shadow their validation or accounting rules.
+        """
+        if not isinstance(action_id, str) or not action_id:
+            raise ValueError("Action ID cannot be empty.")
+        if action_id in self._BUILTIN_ACTION_IDS:
+            raise ValueError("Built-in action handlers cannot be replaced.")
+        if not callable(handler):
+            raise TypeError("Action handler must be callable.")
+        if action_id in self._handlers:
+            raise ValueError(f"Action handler already registered: {action_id}")
+        self._handlers[action_id] = handler
+
     # Step 4: Execute a selected action
     def execute(self, citizen, action, world_context=None):
         if not action or not isinstance(action, ActionOption):
             return {"success": False, "reason": "Invalid action option."}
+
+        handler = self._handlers.get(action.action_id)
+        if handler is not None:
+            result = handler(citizen, action, world_context)
+            if not isinstance(result, dict) or "success" not in result:
+                raise TypeError("Action handlers must return a result mapping with success.")
+            return result
 
         current_tick = 0
         world = None
@@ -411,6 +450,11 @@ class ActionExecutor:
 
             project = action.requirements.get("project")
             work_amount = action.requirements.get("work_amount", 10.0)
+            construction_tick = (
+                world_context.get("tick")
+                if isinstance(world_context, dict) and "tick" in world_context
+                else None
+            )
 
             if project is None:
                 return {
@@ -423,6 +467,7 @@ class ActionExecutor:
                 result = project.perform_work(
                     citizen,
                     work_amount,
+                    tick=construction_tick,
                 )
             except (TypeError, ValueError) as error:
                 return {

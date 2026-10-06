@@ -25,6 +25,11 @@ class TransportationSystem:
 
         if not self.world._is_valid_location(vehicle.location):
             raise ValueError("Vehicle location is outside world bounds.")
+        if (
+            vehicle.destination is not None
+            and not self.world._is_valid_location(vehicle.destination)
+        ):
+            raise ValueError("Vehicle destination is outside world bounds.")
 
         self.vehicles.append(vehicle)
 
@@ -40,6 +45,34 @@ class TransportationSystem:
 
     def get_vehicles(self):
         return list(self.vehicles)
+
+    def assign_destination(self, vehicle, destination):
+        """Assign a bounded destination for deterministic per-tick travel."""
+        if not isinstance(vehicle, Vehicle):
+            raise TypeError("Only Vehicle objects can receive destinations.")
+        if vehicle not in self.vehicles:
+            return {"success": False, "reason": "Vehicle is not registered with this world."}
+        if not vehicle.is_operational():
+            return {"success": False, "reason": "Vehicle is not operational."}
+        if not self.world._is_valid_location(destination):
+            return {"success": False, "reason": "Destination is outside world bounds."}
+        try:
+            vehicle.set_destination(destination)
+        except ValueError as error:
+            return {"success": False, "reason": str(error)}
+        return {
+            "success": True,
+            "vehicle_id": vehicle.vehicle_id,
+            "destination": tuple(destination),
+        }
+
+    def advance_tick(self):
+        """Advance registered vehicle routes once in stable ID order."""
+        moved = []
+        for vehicle in sorted(self.vehicles, key=lambda item: str(item.vehicle_id)):
+            if vehicle.advance_movement(self.world):
+                moved.append(str(vehicle.vehicle_id))
+        return tuple(moved)
 
     # Step 74: Assign vehicle ownership.
     def set_owner(self, vehicle, owner):

@@ -118,6 +118,8 @@ class ConstructionCostSystem:
         }
 # Step 63: Construction projects and worker progress
 
+import math
+
 from src.gaia.building import Building
 from src.gaia.construction import BuildingDefinition, ConstructionCostSystem
 from src.gaia.agents.job import Job
@@ -148,7 +150,12 @@ class ConstructionProject:
                 "Definition must be a BuildingDefinition instance."
             )
 
-        if work_required <= 0:
+        if (
+            isinstance(work_required, bool)
+            or not isinstance(work_required, (int, float))
+            or not math.isfinite(work_required)
+            or work_required <= 0
+        ):
             raise ValueError("Required work must be greater than zero.")
 
         self.project_id = project_id
@@ -167,6 +174,7 @@ class ConstructionProject:
         self.materials_consumed = False
 
         self.workers = []
+        self._worker_last_work_tick = {}
         self.worker_job = None
         self.building = None
 
@@ -245,13 +253,42 @@ class ConstructionProject:
     def remove_worker(self, worker):
         if worker in self.workers:
             self.workers.remove(worker)
+        self._worker_last_work_tick.pop(worker, None)
+
+    def can_worker_contribute(self, worker):
+        """Return whether an assigned citizen may work this project now."""
+        if self.status != "under_construction":
+            return False
+        if (
+            not self.materials_consumed
+            or self.building is None
+            or self.world.get_building(self.building_id) is not self.building
+        ):
+            return False
+        if worker is None or not worker.is_alive() or worker not in self.workers:
+            return False
+        if self.worker_job is not None and (
+            not self.worker_job.active
+            or not self.worker_job.is_citizen_eligible(worker)
+        ):
+            return False
+        return True
 
     # Step 63: Perform one unit of construction work.
-    def perform_work(self, worker, work_amount=10.0):
+    def perform_work(self, worker, work_amount=10.0, *, tick=None):
         if self.status != "under_construction":
             return {
                 "success": False,
                 "reason": "Construction project is not under construction."
+            }
+        if (
+            not self.materials_consumed
+            or self.building is None
+            or self.world.get_building(self.building_id) is not self.building
+        ):
+            return {
+                "success": False,
+                "reason": "Construction prerequisites are not satisfied."
             }
 
         if worker is None or not worker.is_alive():
@@ -266,17 +303,37 @@ class ConstructionProject:
                 "success": False,
                 "reason": "Worker is not assigned to this project."
             }
+        if self.worker_job is not None and (
+            not self.worker_job.active
+            or not self.worker_job.is_citizen_eligible(worker)
+        ):
+            return {
+                "success": False,
+                "reason": "Worker is no longer eligible for this project."
+            }
 
-        if work_amount <= 0:
+        if (
+            isinstance(work_amount, bool)
+            or not isinstance(work_amount, (int, float))
+            or not math.isfinite(work_amount)
+            or work_amount <= 0
+        ):
             return {
                 "success": False,
                 "reason": "Work amount must be greater than zero."
             }
+        if tick is not None:
+            if isinstance(tick, bool) or not isinstance(tick, int) or tick < 0:
+                return {"success": False, "reason": "Tick must be a non-negative integer."}
+            if self._worker_last_work_tick.get(worker) == tick:
+                return {"success": False, "reason": "Worker has already contributed this tick."}
 
         remaining_work = self.work_required - self.work_completed
         applied_work = min(float(work_amount), remaining_work)
 
         self.work_completed += applied_work
+        if tick is not None:
+            self._worker_last_work_tick[worker] = tick
 
         if self.work_completed >= self.work_required:
             self.work_completed = self.work_required
@@ -294,12 +351,59 @@ class ConstructionProject:
             "building_id": self.building_id,
         }
 
+    def advance_tick(
+        self, tick, *, eligible_workers=None, excluded_workers=(),
+        work_per_worker=10.0,
+    ):
+        """Apply one deterministic unit of work per assigned live worker.
+
+        Project start remains responsible for consuming materials exactly once.
+        Only explicitly assigned workers can contribute. When the Simulation
+        supplies ``eligible_workers``, workers must also belong to that engine.
+        """
+        if self.status != "under_construction":
+            return {
+                "success": False,
+                "project_id": self.project_id,
+                "status": self.status,
+                "workers": (),
+            }
+        self.remove_dead_workers()
+        eligible = None if eligible_workers is None else set(eligible_workers)
+        excluded = set(excluded_workers)
+        results = []
+        worked_workers = []
+        workers = sorted(self.workers, key=lambda worker: str(worker.citizen_id))
+        for worker in workers:
+            if eligible is not None and worker not in eligible:
+                continue
+            if worker in excluded:
+                continue
+            result = self.perform_work(worker, work_per_worker, tick=tick)
+            if result["success"]:
+                results.append(str(worker.citizen_id))
+                worked_workers.append(worker)
+            if self.is_complete():
+                break
+        return {
+            "success": bool(results),
+            "project_id": self.project_id,
+            "status": self.status,
+            "work_completed": self.work_completed,
+            "work_required": self.work_required,
+            "workers": tuple(results),
+            "worked_workers": tuple(worked_workers),
+        }
+
     # Step 63: Remove dead workers from active participation.
     def remove_dead_workers(self):
-        self.workers = [
-            worker for worker in self.workers
-            if worker.is_alive()
-        ]
+        living = []
+        for worker in self.workers:
+            if worker.is_alive():
+                living.append(worker)
+            else:
+                self._worker_last_work_tick.pop(worker, None)
+        self.workers = living
 
     def get_progress(self):
         return self.work_completed / self.work_required

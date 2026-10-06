@@ -1,4 +1,5 @@
 import unittest
+import math
 from src.gaia.agents.citizen import Citizen
 from src.gaia.agents.decision import DecisionEngine, ActionOption
 
@@ -16,6 +17,18 @@ class TestDecisionEngine(unittest.TestCase):
             ActionOption("", "Find Food")
         with self.assertRaises(ValueError):
             ActionOption("eat", "")
+        for invalid in (True, "high", math.nan, math.inf):
+            with self.subTest(invalid=invalid):
+                with self.assertRaises(ValueError):
+                    ActionOption("eat", "Find Food", urgency_score=invalid)
+
+    def test_action_option_detaches_requirement_mapping(self):
+        requirements = {"quantity": 1}
+        action = ActionOption("gather", "Gather", requirements=requirements)
+        requirements["quantity"] = 9
+        exported = action.to_dict()
+        exported["requirements"]["quantity"] = 8
+        self.assertEqual(action.requirements, {"quantity": 1})
 
     def test_decision_engine_evaluation(self):
         citizen = Citizen("CIT-001", "Test Citizen")
