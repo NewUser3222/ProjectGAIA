@@ -284,7 +284,12 @@ class ActionExecutor:
                         "reason": "Citizen cannot pay their own wage."
                     }
 
-                if employer.get_money() < job.wage:
+                can_pay_worker = (
+                    employer.can_pay_wage(citizen, job.wage)
+                    if hasattr(employer, "can_pay_wage")
+                    else employer.get_money() >= job.wage
+                )
+                if not can_pay_worker:
                     return {
                         "success": False,
                         "action": "work",

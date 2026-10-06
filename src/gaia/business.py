@@ -30,6 +30,7 @@ class Business:
         self._planned_production = None
         self._market_plan_tick = None
         self._reserved_inventory = {}
+        self._reserved_wages = {}
 
         self.active = True
 
@@ -87,6 +88,29 @@ class Business:
 
     def get_money(self):
         return self.money
+
+    def get_available_money(self):
+        """Return cash that is not committed to planned worker wages."""
+        return self.money - sum(self._reserved_wages.values())
+
+    def can_pay_wage(self, worker, amount):
+        reserved = self._reserved_wages.get(worker.citizen_id, 0.0)
+        if reserved == amount:
+            return True
+        return self.get_available_money() >= amount
+
+    def reserve_worker_wage(self, worker, amount):
+        if amount <= 0:
+            return
+        if self.get_available_money() < amount:
+            raise ValueError("Business does not have enough available money.")
+        self._reserved_wages[worker.citizen_id] = amount
+
+    def release_worker_wage(self, worker, amount=None):
+        if worker is not None:
+            reserved = self._reserved_wages.get(worker.citizen_id)
+            if amount is None or reserved == amount:
+                self._reserved_wages.pop(worker.citizen_id, None)
 
     # Step 56: Inventory
     def add_item(self, resource_name, quantity):
@@ -375,6 +399,7 @@ class Business:
 
         self._planned_production = None
         self._reserved_inventory = {}
+        self._reserved_wages = {}
         return BusinessProductionPlanner.prepare(self, world)
 
     # Step 80: Restrict recipe work to the worker selected for this market plan.

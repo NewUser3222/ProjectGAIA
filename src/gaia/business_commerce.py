@@ -173,7 +173,12 @@ class BusinessCommerce:
             total_amount += amount
             seller_credits[seller] = seller_credits.get(seller, 0.0) + amount
 
-        if not math.isfinite(total_amount) or buyer.get_money() < total_amount:
+        buyer_cash = (
+            buyer.get_available_money()
+            if hasattr(buyer, "get_available_money")
+            else buyer.get_money()
+        )
+        if not math.isfinite(total_amount) or buyer_cash < total_amount:
             return {
                 "success": False,
                 "reason": "Buyer does not have enough money.",
@@ -310,7 +315,12 @@ class BusinessCommerce:
                 "amount": 0.0,
             }
 
-        if buyer.get_money() < total_price:
+        buyer_cash = (
+            buyer.get_available_money()
+            if hasattr(buyer, "get_available_money")
+            else buyer.get_money()
+        )
+        if buyer_cash < total_price:
             return {
                 "success": False,
                 "reason": "Buyer does not have enough money.",

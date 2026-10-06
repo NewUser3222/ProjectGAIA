@@ -330,3 +330,96 @@ def test_production_planner_respects_temporary_and_resulting_storage_capacity():
     assert business.inventory == {"stone": 1.0}
     assert supplier.inventory == {"wood": 2}
     assert simulation.world.market_observations.to_dict()["current"]["trade"] == {}
+
+
+def test_business_plan_reserves_worker_wage_after_procurement():
+    simulation = Simulation()
+    business = Business("wage-backed", "Wage Backed")
+    worker = Citizen("worker", "Worker", age=30)
+    other_worker = Citizen("a-other-worker", "Other Worker", age=30)
+    supplier = Citizen("supplier", "Supplier", age=30)
+    supplier.add_item("wood", 1)
+    business.change_money(15)
+    business.add_recipe(
+        ProductionRecipe(
+            "food", "Bake Food", inputs={"wood": 1}, outputs={"food": 2}
+        )
+    )
+    job = Job("baker", "Baker", recipe_id="food", wage=10)
+    business.add_job(job)
+    business.employ(worker, job)
+    other_job = Job("helper", "Helper", wage=5)
+    business.add_job(other_job)
+    business.employ(other_worker, other_job)
+    simulation.add_citizen(other_worker)
+    simulation.add_citizen(worker)
+    simulation.add_citizen(supplier)
+    simulation.add_business(business)
+    simulation.start()
+
+    simulation.step()
+
+    assert supplier.get_item_quantity("wood") == 0
+    assert worker.get_money() == 10
+    assert other_worker.get_money() == 0
+    assert business.get_money() == 0
+    assert business.get_item_quantity("food") == 2
+
+
+def test_business_does_not_procure_when_inputs_would_strand_worker_wage():
+    simulation = Simulation()
+    business = Business("underfunded", "Underfunded")
+    worker = Citizen("worker", "Worker", age=30)
+    supplier = Citizen("supplier", "Supplier", age=30)
+    supplier.add_item("wood", 1)
+    business.change_money(14)
+    business.add_recipe(
+        ProductionRecipe(
+            "food", "Bake Food", inputs={"wood": 1}, outputs={"food": 2}
+        )
+    )
+    job = Job("baker", "Baker", recipe_id="food", wage=10)
+    business.add_job(job)
+    business.employ(worker, job)
+    simulation.add_citizen(worker)
+    simulation.add_citizen(supplier)
+    simulation.add_business(business)
+
+    result = business.prepare_production(simulation.world)
+
+    assert result["success"] is False
+    assert business.get_money() == 14
+    assert business.get_item_quantity("wood") == 0
+    assert supplier.get_item_quantity("wood") == 1
+    assert simulation.world.market_observations.to_dict()["current"]["trade"] == {}
+
+
+def test_business_cannot_spend_cash_reserved_for_selected_worker_wage():
+    simulation = Simulation()
+    business = Business("payroll", "Payroll")
+    business.change_money(10)
+    business.add_item("wood", 1)
+    worker = Citizen("worker", "Worker", age=30)
+    supplier = Citizen("supplier", "Supplier", age=30)
+    supplier.add_item("wood", 1)
+    business.add_recipe(
+        ProductionRecipe(
+            "food", "Bake Food", inputs={"wood": 1}, outputs={"food": 4}
+        )
+    )
+    job = Job("baker", "Baker", recipe_id="food", wage=10)
+    business.add_job(job)
+    business.employ(worker, job)
+    simulation.add_citizen(worker)
+    simulation.add_citizen(supplier)
+    simulation.add_business(business)
+
+    plan = business.prepare_production(simulation.world)
+    purchase = business.buy_from_citizen(supplier, "wood", 1)
+
+    assert plan["success"] is True
+    assert business.get_money() == 10
+    assert business.get_available_money() == 0
+    assert purchase["success"] is False
+    assert business.get_item_quantity("wood") == 1
+    assert supplier.get_item_quantity("wood") == 1

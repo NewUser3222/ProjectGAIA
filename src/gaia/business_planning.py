@@ -127,6 +127,8 @@ class BusinessProductionPlanner:
                 )
                 expected_sales[resource_name] = expected_sold
                 expected_revenue += expected_sold * output_price
+            wage_cost = job.wage
+            estimated_cost += wage_cost
         except (TypeError, ValueError, OverflowError):
             return None
 
@@ -148,7 +150,7 @@ class BusinessProductionPlanner:
             or not math.isfinite(inventory_after_procurement)
             or not math.isfinite(inventory_after_production)
             or estimated_margin <= 0
-            or procurement_cost > business.get_money()
+            or procurement_cost + wage_cost > business.get_available_money()
             or inventory_after_procurement > business.get_inventory_capacity()
             or inventory_after_production > business.get_inventory_capacity()
         ):
@@ -170,6 +172,7 @@ class BusinessProductionPlanner:
             "estimated_cost": estimated_cost,
             "estimated_margin": estimated_margin,
             "procurement_cost": procurement_cost,
+            "wage_cost": wage_cost,
             "purchases": purchases,
             "inputs": dict(recipe.inputs),
             "outputs": dict(recipe.outputs),
@@ -257,4 +260,5 @@ class BusinessProductionPlanner:
 
         business._reserved_inventory = dict(plan["inputs"])
         business._planned_production = plan
+        business.reserve_worker_wage(plan["worker"], plan["wage_cost"])
         return plan

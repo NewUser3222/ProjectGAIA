@@ -209,7 +209,12 @@ class Simulation:
                             if employer.get_employee_job(citizen) is not job:
                                 continue
 
-                            if employer.get_money() < job.wage:
+                            can_pay_worker = (
+                                employer.can_pay_wage(citizen, job.wage)
+                                if hasattr(employer, "can_pay_wage")
+                                else employer.get_money() >= job.wage
+                            )
+                            if not can_pay_worker:
                                 continue
                         else:
                             # Preserve the legacy citizen-employer economic loop.

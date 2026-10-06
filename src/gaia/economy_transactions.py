@@ -133,7 +133,17 @@ class EconomicTransaction:
 
         amount = float(amount)
 
-        if payer.get_money() < amount:
+        available_money = (
+            payer.get_available_money()
+            if hasattr(payer, "get_available_money")
+            else payer.get_money()
+        )
+        reserved_wage = (
+            payer.can_pay_wage(worker, amount)
+            if hasattr(payer, "can_pay_wage")
+            else False
+        )
+        if available_money < amount and not reserved_wage:
             raise ValueError("Payer does not have enough money.")
 
         if not math.isfinite(payer.get_money() - amount) or not math.isfinite(
@@ -143,6 +153,8 @@ class EconomicTransaction:
 
         payer.change_money(-amount)
         worker.change_money(amount)
+        if hasattr(payer, "release_worker_wage"):
+            payer.release_worker_wage(worker, amount)
 
         return TransactionResult(
             success=True,
