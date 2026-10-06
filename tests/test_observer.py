@@ -1,5 +1,6 @@
 import unittest
 import json
+from unittest import mock
 
 from src.gaia.agents.citizen import Citizen
 from src.gaia.building import Building
@@ -199,6 +200,116 @@ class TestGAIAObserver(unittest.TestCase):
         self.assertEqual(dict(history[2].resources)["food"], 500)
         self.assertEqual(history[0].sequence, 0)
         self.assertEqual(history[-1].simulation_tick, 3)
+
+
+    def test_serialization_is_deterministic_detached_and_performs_no_io(self):
+        citizen = Citizen("c1", "Ada")
+        self.simulation.add_citizen(citizen)
+        report = self.observer.observe(self.simulation)
+
+        with mock.patch("builtins.open", side_effect=AssertionError("I/O")):
+            serialized = report.to_json()
+            detached = report.to_dict()
+
+        self.assertEqual(serialized, report.to_json())
+        self.assertEqual(json.loads(serialized), detached)
+        detached["events"].clear()
+        self.assertEqual(len(report.events), 1)
+        with self.assertRaises((AttributeError, TypeError)):
+            report.events[0].description = "changed"
+
+    def test_reused_citizen_id_keeps_distinct_historical_incarnations(self):
+        first = Citizen("same-id", "First")
+        self.simulation.add_citizen(first)
+        before_removal = self.observer.observe(self.simulation)
+        self.simulation.citizens.remove(first)
+        replacement = Citizen("same-id", "Second")
+        self.simulation.add_citizen(replacement)
+
+        report = self.observer.observe(self.simulation)
+
+        archives = [archive for archive in report.citizens if archive.citizen_id == "same-id"]
+        self.assertEqual([(item.incarnation, item.name) for item in archives], [
+            (1, "First"), (2, "Second")
+        ])
+        same_id_events = [event for event in report.events if event.subject_id == "same-id"]
+        self.assertEqual({event.subject_incarnation for event in same_id_events}, {1, 2})
+        self.assertEqual(len({event.event_id for event in same_id_events}), len(same_id_events))
+        self.assertEqual(len(before_removal.citizens), 1)
+
+    def test_repeated_observation_and_malformed_optional_memories_are_safe(self):
+        citizen = Citizen("c1", "Ada")
+        citizen.memories.extend([None, {}, {"event": "Boolean tick", "tick": True}])
+        self.simulation.add_citizen(citizen)
+
+        first = self.observer.observe(self.simulation)
+        second = self.observer.observe(self.simulation)
+
+        memories = [event for event in first.events if event.source == "memory"]
+        self.assertEqual(len(memories), 1)
+        self.assertIsNone(memories[0].event_tick)
+        self.assertEqual(second.events, first.events)
+        self.assertEqual(len(second.world_snapshots), 2)
+
+
+    def test_missing_optional_history_collections_are_treated_as_empty(self):
+        citizen = Citizen("c1", "Ada")
+        del citizen.history
+        del citizen.memories
+        self.simulation.add_citizen(citizen)
+
+        report = self.observer.observe(self.simulation)
+
+        self.assertEqual(report.events, ())
+        self.assertEqual(report.citizens[0].citizen_id, "c1")
+
+
+    def test_simulation_remains_independent_of_optional_observer(self):
+        simulation = Simulation()
+        self.assertFalse(hasattr(simulation, "observer"))
+        simulation.start()
+        simulation.step()
+        report = GAIAObserver().observe(simulation)
+        self.assertEqual(report.simulation_tick, 1)
+        self.assertFalse(hasattr(simulation, "observer"))
+
+
+    def test_engine_events_preserve_source_ticks_without_duplicate_history(self):
+        parent_a = Citizen("pa", "Parent A", age=30)
+        parent_b = Citizen("pb", "Parent B", age=30)
+        transitioning = Citizen("adulting", "Transition", age=12)
+        dying = Citizen("dying", "Dying")
+        dying.health = 1
+        dying.hunger = 100
+        for citizen in (parent_a, parent_b, transitioning, dying):
+            self.simulation.add_citizen(citizen)
+        child = self.simulation.create_child(parent_a, parent_b, "baby", "Baby")
+
+        self.simulation.start()
+        self.simulation.step()
+        report = self.observer.observe(self.simulation)
+
+        birth = next(event for event in report.events if event.event_type == "birth")
+        transition = next(
+            event for event in report.events
+            if event.event_type == "life_stage_transition"
+        )
+        death = next(event for event in report.events if event.event_type == "death")
+        self.assertEqual((birth.event_tick, birth.observed_simulation_tick), (0, 1))
+        self.assertEqual(birth.related_citizen_ids, ("pa", "pb"))
+        self.assertEqual(transition.event_tick, 1)
+        self.assertEqual(death.event_tick, 1)
+        self.assertEqual(death.subject_id, "dying")
+        self.assertEqual(sum(event.event_type == "birth" for event in report.events), 1)
+        self.assertEqual(sum(event.event_type == "death" for event in report.events), 1)
+
+        repeated = self.observer.observe(self.simulation)
+        self.assertEqual(repeated.events, report.events)
+        with self.assertRaises(AttributeError):
+            self.simulation.event_records[0].source_tick = 9
+        with self.assertRaises(AttributeError):
+            self.simulation.event_records.append(None)
+        self.assertEqual(child.citizen_id, birth.subject_id)
 
 
 if __name__ == "__main__":

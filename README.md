@@ -56,11 +56,50 @@ pass it a simulation snapshot; the simulation does not own or depend on the
 Observer. It preserves citizen history and tick-stamped memories, archived
 citizen identities and family links, and immutable world snapshots. Plain
 citizen history strings have no source tick, so the Observer records the tick
-when it first sees them rather than assigning a historical event time. When
-given Governor reports, it tracks new, persistent, recurring, and resolved
+when it first sees them rather than assigning a historical event time. Archived
+identities include an incarnation number so a later citizen reusing a removed
+citizen's ID does not overwrite the earlier archive. The Simulation Engine
+also exposes immutable event records for births it creates and lifecycle
+transitions or deaths observed during a simulation step. These records preserve
+the engine source tick separately from the Observer's observation tick; legacy
+history strings without engine timing retain an unknown source tick. When given
+Governor reports, the Observer tracks new, persistent, recurring, and resolved
 findings and retains immutable report snapshots separately from the Governor's
-stateless current-condition analysis. `ObserverReport.to_json()` produces
-deterministic JSON text for caller-managed storage without performing file I/O.
+stateless current-condition analysis. `ObserverReport.to_dict()` and
+`ObserverReport.to_json()` provide detached, deterministic exports that callers
+can persist without file I/O; the Observer has no persistence backend. Callers
+control the optional flow: call `GAIAGovernor.observe()`, optionally pass its
+report to `GAIAObserver.record_governor_report()`, then pass the return value of
+`GAIAObserver.observe()` to the store or another export destination. The
+Simulation Engine has no Observer dependency.
+
+The optional `SQLiteHistoryStore` in `src/gaia/persistence.py` is a
+caller-managed adapter that accepts an Observer report or its detached mapping
+export. It stores the canonical report for round-trip retrieval and normalized
+rows for citizen incarnations, historical events, world snapshots, Governor
+reports, and findings. Each save is transactional and idempotent for the same
+export. SQLite is downstream of observation: neither the Simulation Engine nor
+the Governor or Observer imports the persistence module. The adapter can be
+replaced later, and visualization remains a separate consumer of simulation or
+stored history data.
+
+The SQLite adapter uses schema version 1 and rejects unsupported versions,
+unversioned non-empty databases, and incomplete version 1 schemas. Its file-backed
+round-trip and transaction rollback behavior are covered using temporary files
+inside the test workspace; tests remove those files after each run. Callers own
+the persistence lifecycle and choose when to save each detached Observer export.
+
+Persisted history also has a read-only, storage-neutral contract in
+`src/gaia/history.py` (`HistoryReader`). Its SQLite implementation provides
+detached, deterministically ordered snapshots, citizen incarnations, events,
+Governor reports and findings, with simulation and tick filtering. Event queries
+keep source tick and observation tick filters distinct. A future
+visualizer can receive this interface without querying SQLite tables. Live
+Simulation Engine state, an Observer's current report, and persisted historical
+snapshots are separate views; this interface does not expose simulation control
+or imply that a stored snapshot is the current live world. Visualization remains
+an independent consumer, and SQLite can be replaced without changing simulation
+or rendering concepts.
 
 Governor reports are deterministic snapshots derived from Simulation Engine
 state. They summarize population, resources, environment, transportation,

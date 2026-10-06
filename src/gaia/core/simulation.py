@@ -1,6 +1,23 @@
+from dataclasses import dataclass
+from weakref import WeakKeyDictionary
+
 from src.gaia.agents.decision import DecisionEngine
 from src.gaia.agents.social import SocialInteraction
 from src.gaia.simulation.world import WorldState
+
+
+@dataclass(frozen=True)
+class SimulationEventRecord:
+    """Immutable event context the engine can timestamp authoritatively."""
+
+    sequence: int
+    event_type: str
+    subject_id: str
+    subject_incarnation: int
+    subject_name: str
+    description: str
+    source_tick: int
+    related_citizen_ids: tuple = ()
 
 
 class Simulation:
@@ -14,6 +31,45 @@ class Simulation:
         self.construction_projects = []
         self.world = WorldState()
         self.decision_engine = DecisionEngine()
+        self._event_records = []
+        self._citizen_instances = WeakKeyDictionary()
+        self._next_citizen_incarnation = {}
+
+    @property
+    def event_records(self):
+        """Return immutable engine events known with an authoritative tick."""
+        return tuple(self._event_records)
+
+    def _ensure_citizen_identity(self, citizen):
+        known = self._citizen_instances.get(citizen)
+        if known is not None:
+            return known
+        citizen_id = str(citizen.citizen_id)
+        incarnation = self._next_citizen_incarnation.get(citizen_id, 0) + 1
+        self._next_citizen_incarnation[citizen_id] = incarnation
+        identity = (citizen_id, incarnation)
+        self._citizen_instances[citizen] = identity
+        return identity
+
+    def get_citizen_incarnation(self, citizen):
+        """Return the engine identity assigned when a citizen was added."""
+        identity = self._citizen_instances.get(citizen)
+        if identity is None:
+            raise ValueError("Citizen has not been added to this simulation.")
+        return identity[1]
+
+    def _record_event(self, citizen, event_type, description, related=()):
+        citizen_id, incarnation = self._ensure_citizen_identity(citizen)
+        self._event_records.append(SimulationEventRecord(
+            sequence=len(self._event_records),
+            event_type=event_type,
+            subject_id=citizen_id,
+            subject_incarnation=incarnation,
+            subject_name=str(citizen.name),
+            description=description,
+            source_tick=self.tick,
+            related_citizen_ids=tuple(sorted(str(value) for value in related)),
+        ))
 
     # Step 69: Return all known ancestors through persistent parent IDs
     def get_ancestors(self, citizen):
@@ -82,11 +138,16 @@ class Simulation:
         child.add_relationship(parent_b.citizen_id, "parent")
 
         self.add_citizen(child)
+        self._record_event(
+            child, "birth", "Citizen was born.",
+            related=(parent_a.citizen_id, parent_b.citizen_id),
+        )
         return child
 
     def add_citizen(self, citizen):
         """Adds a citizen to the simulation and its world state."""
         if citizen and citizen not in self.citizens:
+            self._ensure_citizen_identity(citizen)
             self.citizens.append(citizen)
             self.world.add_citizen(citizen)
 
@@ -144,6 +205,10 @@ class Simulation:
         if not self.is_running:
             return
 
+        before_states = {
+            id(citizen): (citizen, citizen.life_stage, citizen.lifecycle_state)
+            for citizen in tuple(self.citizens)
+        }
         self.tick += 1
         print(f"Simulation tick: {self.tick}")
 
@@ -266,5 +331,19 @@ class Simulation:
 
                 interaction = SocialInteraction("talk", c1, c2)
                 interaction.execute(current_tick=self.tick)
+
+        for citizen in tuple(self.citizens):
+            previous = before_states.get(id(citizen))
+            if previous is None or previous[0] is not citizen:
+                continue
+            _, old_stage, old_lifecycle = previous
+            if old_stage != citizen.life_stage:
+                self._record_event(
+                    citizen,
+                    "life_stage_transition",
+                    f"Life stage changed from {old_stage} to {citizen.life_stage}.",
+                )
+            if old_lifecycle != "dead" and citizen.lifecycle_state == "dead":
+                self._record_event(citizen, "death", "Citizen died.")
 
 

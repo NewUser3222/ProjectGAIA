@@ -4,6 +4,7 @@ from dataclasses import asdict, dataclass, replace
 import hashlib
 import json
 import math
+from weakref import WeakKeyDictionary
 
 
 @dataclass(frozen=True)
@@ -22,6 +23,7 @@ class HistoricalEvent:
     observed_simulation_tick: int
     observed_world_tick: int
     related_citizen_ids: tuple
+    subject_incarnation: int = 1
 
 
 @dataclass(frozen=True)
@@ -39,6 +41,7 @@ class CitizenArchive:
     relationships: tuple
     first_observed_tick: int
     last_observed_tick: int
+    incarnation: int = 1
 
 
 @dataclass(frozen=True)
@@ -53,10 +56,21 @@ class ObserverReport:
     world_snapshots: tuple = ()
     governor_reports: tuple = ()
 
+    def to_dict(self):
+        """Return a detached JSON-compatible value for caller-managed storage."""
+        payload = json.dumps(
+            asdict(self),
+            ensure_ascii=False,
+            sort_keys=True,
+            separators=(",", ":"),
+            allow_nan=False,
+        )
+        return json.loads(payload)
+
     def to_json(self):
         """Return deterministic JSON text without performing file I/O."""
         return json.dumps(
-            asdict(self),
+            self.to_dict(),
             ensure_ascii=False,
             sort_keys=True,
             separators=(",", ":"),
@@ -147,6 +161,8 @@ class GAIAObserver:
         self._event_keys = set()
         self._citizens = {}
         self._citizen_first_seen = {}
+        self._citizen_instances = WeakKeyDictionary()
+        self._next_citizen_incarnation = {}
         self._finding_history = {}
         self._active_finding_ids = set()
         self._world_snapshots = []
@@ -160,29 +176,83 @@ class GAIAObserver:
         world = simulation.world
         tick = simulation.tick
         world_tick = world.current_tick
+        known_history_events = {}
+        known_lifecycle_transitions = set()
+        engine_records = getattr(simulation, "event_records", ())
+        if not isinstance(engine_records, (tuple, list)):
+            engine_records = ()
+        for record in tuple(engine_records):
+            identity = (
+                str(getattr(record, "subject_id", "")),
+                getattr(record, "subject_incarnation", 0),
+            )
+            event_type = getattr(record, "event_type", "")
+            description = getattr(record, "description", "")
+            sequence = getattr(record, "sequence", None)
+            if (
+                not identity[0]
+                or not isinstance(identity[1], int)
+                or isinstance(identity[1], bool)
+                or identity[1] < 1
+                or not isinstance(sequence, int)
+                or isinstance(sequence, bool)
+                or sequence < 0
+                or not isinstance(event_type, str)
+                or not event_type
+                or not isinstance(description, str)
+                or not description
+            ):
+                continue
+            event_key = (identity, "simulation_engine", sequence)
+            is_new_engine_event = event_key not in self._event_keys
+            self._record_engine_event(record, tick, world_tick, identity)
+            if event_type in {"birth", "death"}:
+                signature = (identity, event_type, description)
+                known_history_events[signature] = known_history_events.get(signature, 0) + 1
+            elif event_type == "life_stage_transition" and is_new_engine_event:
+                known_lifecycle_transitions.add((identity, description))
+
         for citizen in tuple(simulation.citizens):
-            self._archive_citizen(citizen, tick, world_tick)
+            identity = self._identity_for(citizen, simulation)
+            self._archive_citizen(
+                citizen, tick, world_tick, identity, known_lifecycle_transitions
+            )
             related = self._related_citizen_ids(citizen)
-            for index, text in enumerate(tuple(citizen.history)):
+            history = getattr(citizen, "history", ())
+            if not isinstance(history, (tuple, list)):
+                history = ()
+            memories = getattr(citizen, "memories", ())
+            if not isinstance(memories, (tuple, list)):
+                memories = ()
+            for index, text in enumerate(tuple(history)):
                 if not isinstance(text, str) or not text:
+                    continue
+                event_type = self.HISTORY_EVENT_TYPES.get(text, "citizen_history")
+                signature = (identity, event_type, text)
+                if known_history_events.get(signature, 0):
+                    known_history_events[signature] -= 1
                     continue
                 self._record(
                     citizen, "history", index, text,
-                    self.HISTORY_EVENT_TYPES.get(text, "citizen_history"),
-                    None, tick, world_tick, related,
+                    event_type,
+                    None, tick, world_tick, related, identity,
                 )
-            for index, memory in enumerate(tuple(citizen.memories)):
+            for index, memory in enumerate(tuple(memories)):
                 if not isinstance(memory, dict):
                     continue
                 text = memory.get("event")
                 source_tick = memory.get("tick")
                 if not isinstance(text, str) or not text:
                     continue
-                if not isinstance(source_tick, int) or source_tick < 0:
+                if (
+                    not isinstance(source_tick, int)
+                    or isinstance(source_tick, bool)
+                    or source_tick < 0
+                ):
                     source_tick = None
                 self._record(
                     citizen, "memory", index, text, "citizen_memory",
-                    source_tick, tick, world_tick, related,
+                    source_tick, tick, world_tick, related, identity,
                 )
 
         self._world_snapshots.append(self._snapshot(simulation))
@@ -373,23 +443,84 @@ class GAIAObserver:
             findings=findings,
         )
 
-    def _archive_citizen(self, citizen, tick, world_tick):
+    def _record_engine_event(self, record, simulation_tick, world_tick, identity):
+        sequence = record.sequence
+        key = (identity, "simulation_engine", sequence)
+        if key in self._event_keys:
+            return
+        self._event_keys.add(key)
+        event_identity = json.dumps(
+            (identity, "simulation_engine", sequence),
+            ensure_ascii=False,
+            separators=(",", ":"),
+        )
+        digest = hashlib.sha256(event_identity.encode("utf-8")).hexdigest()[:16]
+        source_tick = getattr(record, "source_tick", None)
+        if (
+            not isinstance(source_tick, int)
+            or isinstance(source_tick, bool)
+            or source_tick < 0
+        ):
+            source_tick = None
+        related = getattr(record, "related_citizen_ids", ())
+        if not isinstance(related, (tuple, list, set)):
+            related = ()
+        self._events.append(HistoricalEvent(
+            event_id=f"obs-{digest}",
+            sequence=len(self._events),
+            event_type=record.event_type,
+            subject_id=identity[0],
+            subject_incarnation=identity[1],
+            subject_name=str(getattr(record, "subject_name", "")),
+            description=record.description,
+            source="simulation_engine",
+            source_index=sequence,
+            event_tick=source_tick,
+            observed_simulation_tick=simulation_tick,
+            observed_world_tick=world_tick,
+            related_citizen_ids=tuple(sorted(str(value) for value in related)),
+        ))
+
+    def _identity_for(self, citizen, simulation=None):
+        known = self._citizen_instances.get(citizen)
+        if known is not None:
+            return known
         citizen_id = str(citizen.citizen_id)
-        previous = self._citizens.get(citizen_id)
+        if simulation is not None and hasattr(simulation, "get_citizen_incarnation"):
+            incarnation = simulation.get_citizen_incarnation(citizen)
+        else:
+            incarnation = self._next_citizen_incarnation.get(citizen_id, 0) + 1
+        self._next_citizen_incarnation[citizen_id] = max(
+            incarnation, self._next_citizen_incarnation.get(citizen_id, 0)
+        )
+        identity = (citizen_id, incarnation)
+        self._citizen_instances[citizen] = identity
+        return identity
+
+    def _archive_citizen(
+        self, citizen, tick, world_tick, identity, known_lifecycle_transitions
+    ):
+        citizen_id, incarnation = identity
+        previous = self._citizens.get(identity)
         if previous is None:
-            self._citizen_first_seen[citizen_id] = tick
+            self._citizen_first_seen[identity] = tick
         elif previous.life_stage != citizen.life_stage:
-            self._record(
-                citizen,
-                "lifecycle_state",
-                len(self._world_snapshots),
-                f"Life stage changed from {previous.life_stage} to {citizen.life_stage}.",
-                "life_stage_transition",
-                None,
-                tick,
-                world_tick,
-                self._related_citizen_ids(citizen),
+            description = (
+                f"Life stage changed from {previous.life_stage} to {citizen.life_stage}."
             )
+            if (identity, description) not in known_lifecycle_transitions:
+                self._record(
+                    citizen,
+                    "lifecycle_state",
+                    len(self._world_snapshots),
+                    description,
+                    "life_stage_transition",
+                    None,
+                    tick,
+                    world_tick,
+                    self._related_citizen_ids(citizen),
+                    identity,
+                )
         parents = tuple(sorted(str(value) for value in citizen.get_parents()))
         children = tuple(sorted(str(value) for value in citizen.get_children()))
         relationships = tuple(sorted(
@@ -397,8 +528,9 @@ class GAIAObserver:
             for value in citizen.relationships
             if isinstance(value, dict) and value.get("citizen_id") is not None
         ))
-        self._citizens[citizen_id] = CitizenArchive(
+        self._citizens[identity] = CitizenArchive(
             citizen_id=citizen_id,
+            incarnation=incarnation,
             name=str(citizen.name),
             age=_freeze(citizen.age),
             generation=_freeze(citizen.generation),
@@ -407,7 +539,7 @@ class GAIAObserver:
             parents=parents,
             children=children,
             relationships=relationships,
-            first_observed_tick=self._citizen_first_seen[citizen_id],
+            first_observed_tick=self._citizen_first_seen[identity],
             last_observed_tick=tick,
         )
 
@@ -424,20 +556,24 @@ class GAIAObserver:
 
     def _record(
         self, citizen, source, source_index, description, event_type,
-        event_tick, simulation_tick, world_tick, related,
+        event_tick, simulation_tick, world_tick, related, identity=None,
     ):
         citizen_id = str(citizen.citizen_id)
-        key = (citizen_id, source, source_index)
+        identity = identity or self._identity_for(citizen)
+        key = (identity, source, source_index)
         if key in self._event_keys:
             return
         self._event_keys.add(key)
-        identity = "|".join((citizen_id, source, str(source_index)))
-        digest = hashlib.sha256(identity.encode("utf-8")).hexdigest()[:16]
+        event_identity = json.dumps(
+            (identity, source, source_index), ensure_ascii=False, separators=(",", ":")
+        )
+        digest = hashlib.sha256(event_identity.encode("utf-8")).hexdigest()[:16]
         self._events.append(HistoricalEvent(
             event_id=f"obs-{digest}",
             sequence=len(self._events),
             event_type=event_type,
             subject_id=citizen_id,
+            subject_incarnation=identity[1],
             subject_name=str(citizen.name),
             description=description,
             source=source,
