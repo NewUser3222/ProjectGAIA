@@ -151,3 +151,35 @@ def test_failed_business_trade_does_not_create_money_or_resources():
     assert seller.get_money() == before_seller_money
     assert buyer.get_item_quantity("wood") == 0
     assert seller.get_item_quantity("wood") == 0
+
+
+def test_dead_citizen_cannot_sell_resources_to_a_business():
+    buyer = Business("buyer", "Buyer")
+    seller = Citizen("seller", "Seller")
+    buyer.change_money(100)
+    seller.add_item("wood", 2)
+    seller.die()
+
+    result = buyer.buy_from_citizen(seller, "wood", 1)
+
+    assert result["success"] is False
+    assert buyer.get_item_quantity("wood") == 0
+    assert seller.get_item_quantity("wood") == 2
+    assert buyer.get_money() == 100
+    assert seller.get_money() == 0
+
+
+def test_inactive_business_cannot_sell_resources():
+    buyer = Business("buyer", "Buyer")
+    seller = Business("seller", "Seller")
+    buyer.change_money(100)
+    seller.add_item("wood", 2)
+    seller.deactivate()
+
+    result = buyer.buy_resource(seller, "wood", 1)
+
+    assert result["success"] is False
+    assert buyer.get_item_quantity("wood") == 0
+    assert seller.get_item_quantity("wood") == 2
+    assert buyer.get_money() == 100
+    assert seller.get_money() == 0

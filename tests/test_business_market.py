@@ -1,6 +1,7 @@
 from src.gaia.agents.citizen import Citizen
 from src.gaia.agents.job import Job
 from src.gaia.business import Business
+from src.gaia.business_commerce import BusinessCommerce
 from src.gaia.core.simulation import Simulation
 from src.gaia.production import ProductionRecipe
 
@@ -126,3 +127,144 @@ def test_citizen_can_buy_food_from_an_active_business_in_simulation():
     assert buyer.get_money() == 10
     assert business.get_item_quantity("food") == 0
     assert business.get_money() == 10
+
+
+def test_recipe_procures_partial_input_from_multiple_sellers_and_reserves_it():
+    simulation = Simulation()
+    business = Business("metalworks", "Metalworks")
+    worker = Citizen("worker", "Worker", age=30)
+    first_supplier = Citizen("supplier-a", "Supplier A", age=30)
+    second_supplier = Citizen("supplier-b", "Supplier B", age=30)
+    first_supplier.add_item("wood", 2)
+    second_supplier.add_item("wood", 3)
+    business.change_money(100)
+    business.add_recipe(
+        ProductionRecipe(
+            "metal", "Smelt Metal", inputs={"wood": 5}, outputs={"metal": 3}
+        )
+    )
+    job = Job("smelter", "Smelter", recipe_id="metal")
+    business.add_job(job)
+    business.employ(worker, job)
+    for citizen in (worker, first_supplier, second_supplier):
+        simulation.add_citizen(citizen)
+    simulation.add_business(business)
+
+    plan = business.prepare_production(simulation.world)
+
+    assert plan["success"] is True
+    assert len(plan["purchases"]) == 2
+    assert first_supplier.get_item_quantity("wood") == 0
+    assert second_supplier.get_item_quantity("wood") == 0
+    assert business.get_item_quantity("wood") == 5
+    assert business.get_available_quantity("wood") == 0
+    assert simulation.world.market_observations.to_dict()["current"]["trade"]["wood"] == 5
+
+    buyer = Citizen("buyer", "Buyer", age=30)
+    buyer.change_money(100)
+    blocked_sale = BusinessCommerce.sell_to_citizen(
+        business, buyer, "wood", 1
+    )
+    assert blocked_sale["success"] is False
+    assert business.get_item_quantity("wood") == 5
+    assert buyer.get_item_quantity("wood") == 0
+
+    production = business.produce("metal")
+    assert production["success"] is True
+    assert business.get_item_quantity("wood") == 0
+    assert business.get_item_quantity("metal") == 3
+    assert business.get_available_quantity("wood") == 0
+    activity = simulation.world.market_observations.to_dict()["current"]
+    assert activity["consumption"]["wood"] == 5
+    assert activity["production"]["metal"] == 3
+
+
+def test_multi_seller_procurement_failure_rolls_back_every_order():
+    simulation = Simulation()
+    buyer = Business("buyer", "Buyer")
+    seller_with_wood = Citizen("wood-seller", "Wood Seller", age=30)
+    seller_with_stone = Business("stone-seller", "Stone Seller")
+    buyer.change_money(100)
+    seller_with_wood.add_item("wood", 2)
+    seller_with_stone.add_item("stone", 1)
+    for citizen in (seller_with_wood,):
+        simulation.add_citizen(citizen)
+    for business in (buyer, seller_with_stone):
+        simulation.add_business(business)
+
+    before = (
+        dict(buyer.inventory),
+        dict(seller_with_wood.inventory),
+        dict(seller_with_stone.inventory),
+        buyer.get_money(),
+        seller_with_wood.get_money(),
+        seller_with_stone.get_money(),
+    )
+    result = BusinessCommerce.buy_bundle(
+        buyer,
+        [
+            {"seller": seller_with_wood, "resource": "wood", "quantity": 2},
+            {"seller": seller_with_stone, "resource": "stone", "quantity": 2},
+        ],
+    )
+
+    assert result["success"] is False
+    assert (
+        buyer.inventory,
+        seller_with_wood.inventory,
+        seller_with_stone.inventory,
+        buyer.get_money(),
+        seller_with_wood.get_money(),
+        seller_with_stone.get_money(),
+    ) == before
+    assert simulation.world.market_observations.to_dict()["current"]["trade"] == {}
+
+
+def test_insufficient_business_funds_reject_all_procurement_orders():
+    simulation = Simulation()
+    business = Business("cash-limited", "Cash Limited")
+    worker = Citizen("worker", "Worker", age=30)
+    first_supplier = Citizen("supplier-a", "Supplier A", age=30)
+    second_supplier = Citizen("supplier-b", "Supplier B", age=30)
+    first_supplier.add_item("wood", 2)
+    second_supplier.add_item("wood", 3)
+    business.change_money(1)
+    business.add_recipe(
+        ProductionRecipe(
+            "metal", "Smelt Metal", inputs={"wood": 5}, outputs={"metal": 3}
+        )
+    )
+    job = Job("smelter", "Smelter", recipe_id="metal")
+    business.add_job(job)
+    business.employ(worker, job)
+    for citizen in (worker, first_supplier, second_supplier):
+        simulation.add_citizen(citizen)
+    simulation.add_business(business)
+
+    result = business.prepare_production(simulation.world)
+
+    assert result["success"] is False
+    assert business.get_money() == 1
+    assert business.get_item_quantity("wood") == 0
+    assert first_supplier.get_item_quantity("wood") == 2
+    assert second_supplier.get_item_quantity("wood") == 3
+    assert simulation.world.market_observations.to_dict()["current"]["trade"] == {}
+
+
+def test_citizen_decisions_ignore_business_inventory_reserved_for_production():
+    simulation = Simulation()
+    buyer = Citizen("buyer", "Buyer", age=30)
+    buyer.change_money(100)
+    buyer.hunger = 80
+    buyer.needs["hunger"] = 80
+    business = Business("reserved-stall", "Reserved Stall")
+    business.add_item("food", 1)
+    business._reserved_inventory = {"food": 1}
+    simulation.add_citizen(buyer)
+    simulation.add_business(business)
+
+    options = simulation.decision_engine.evaluate_needs(
+        buyer, world=simulation.world
+    )
+
+    assert all(option.action_id != "buy_resource" for option in options)

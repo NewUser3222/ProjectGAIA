@@ -74,12 +74,17 @@ class DecisionEngine:
                     continue
                 if hasattr(seller, "is_active") and not seller.is_active():
                     continue
-                if seller.get_item_quantity("food") <= 0:
+                available_food = (
+                    seller.get_available_quantity("food")
+                    if hasattr(seller, "get_available_quantity")
+                    else seller.get_item_quantity("food")
+                )
+                if available_food <= 0:
                     continue
 
                 food_price = world.get_market_price(
                     "food",
-                    supply=seller.get_item_quantity("food"),
+                    supply=available_food,
                 )
                 if citizen.get_money() >= food_price:
                     affordable_offers.append((food_price, seller))

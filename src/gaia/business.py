@@ -24,6 +24,7 @@ class Business:
         self.employee_jobs = {}
         self._planned_production = None
         self._market_plan_tick = None
+        self._reserved_inventory = {}
 
         self.active = True
 
@@ -118,6 +119,14 @@ class Business:
             raise ValueError("Resource name cannot be empty.")
 
         return self.inventory.get(resource_name, 0)
+
+    def get_available_quantity(self, resource_name):
+        """Return inventory not committed to the current production plan."""
+        return max(
+            0,
+            self.get_item_quantity(resource_name)
+            - self._reserved_inventory.get(resource_name, 0),
+        )
 
     def has_item(self, resource_name, quantity=1):
         if quantity < 0:
@@ -232,6 +241,16 @@ class Business:
                 "reason": "Business is not active."
             }
 
+        if (
+            self._planned_production is not None
+            and self._planned_production["recipe_id"] != recipe_id
+        ):
+            return {
+                "success": False,
+                "recipe_id": recipe_id,
+                "reason": "Business inputs are committed to another recipe this tick."
+            }
+
         result = ProductionSystem.produce(self.inventory, recipe)
         if result["success"]:
             market_observations = getattr(self, "_market_observations", None)
@@ -244,6 +263,8 @@ class Business:
                     market_observations.record_production(
                         resource_name, quantity
                     )
+            self._planned_production = None
+            self._reserved_inventory = {}
         return result
 
     # Step 80: Evaluate configured recipes against market conditions and workers.
@@ -256,6 +277,8 @@ class Business:
     def prepare_production(self, world):
         from src.gaia.business_planning import BusinessProductionPlanner
 
+        self._planned_production = None
+        self._reserved_inventory = {}
         return BusinessProductionPlanner.prepare(self, world)
 
     # Step 80: Restrict recipe work to the worker selected for this market plan.
