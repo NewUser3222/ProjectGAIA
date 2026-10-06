@@ -215,6 +215,10 @@ class WorldState:
 
         return quantity
 
+    def is_valid_location(self, location):
+        """Return whether a location falls within this world's bounds."""
+        return self._is_valid_location(location)
+
     # Step 42: Validate a citizen's world location before gathering
     def _is_valid_location(self, location):
         if not isinstance(location, (tuple, list)) or len(location) != 2:
