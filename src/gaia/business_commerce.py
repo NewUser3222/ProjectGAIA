@@ -83,6 +83,28 @@ class BusinessCommerce:
         if buyer is seller:
             raise ValueError("Buyer and seller must be different.")
 
+        from src.gaia.agents.citizen import Citizen
+        from src.gaia.business import Business
+
+        if not isinstance(buyer, (Citizen, Business)) or not isinstance(
+            seller, (Citizen, Business)
+        ):
+            raise TypeError("Commerce participants must be Citizens or Businesses.")
+
+        for participant in (buyer, seller):
+            if isinstance(participant, Citizen) and not participant.is_alive():
+                return {
+                    "success": False,
+                    "reason": "Dead citizens cannot participate in commerce.",
+                    "amount": 0.0,
+                }
+            if isinstance(participant, Business) and not participant.is_active():
+                return {
+                    "success": False,
+                    "reason": "Inactive businesses cannot participate in commerce.",
+                    "amount": 0.0,
+                }
+
         try:
             quantity = float(quantity)
         except (TypeError, ValueError, OverflowError):

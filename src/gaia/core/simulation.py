@@ -160,6 +160,11 @@ class Simulation:
             if business.is_active():
                 business.remove_dead_employees()
 
+        # Step 80: Businesses evaluate market conditions and procure inputs.
+        for business in self.businesses:
+            if business.is_active():
+                business.prepare_production(self.world)
+
         # Step 65: Remove dead workers from active construction projects.
         for project in self.construction_projects:
             if not project.is_complete():

@@ -114,6 +114,17 @@ class WorldState:
             recent_trade=recent["trade"],
         )
 
+    # Step 80: Measure active supply for production feasibility and valuation.
+    def get_market_supply(self, resource_name):
+        supply = self.resources.get(resource_name, 0)
+        for citizen in self.citizens:
+            if citizen.is_alive():
+                supply += citizen.get_item_quantity(resource_name)
+        for business in self.businesses:
+            if business.is_active():
+                supply += business.get_item_quantity(resource_name)
+        return supply
+
     # Step 60: Remove a business from the world
     def remove_business(self, business):
         if business in self.businesses:

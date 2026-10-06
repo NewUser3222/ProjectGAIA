@@ -144,23 +144,32 @@ class ActionExecutor:
                     from src.gaia.economy import get_resource_value
                     unit_price = get_resource_value(resource_name)
 
-            from src.gaia.economy_transactions import EconomicTransaction
+            from src.gaia.agents.citizen import Citizen
 
-            result = EconomicTransaction.purchase_resource(
-                citizen,
-                seller,
-                resource_name,
-                quantity,
-                unit_price
-            )
+            if isinstance(seller, Citizen):
+                from src.gaia.economy_transactions import EconomicTransaction
 
-            if result.success and hasattr(citizen, "add_memory"):
+                result = EconomicTransaction.purchase_resource(
+                    citizen,
+                    seller,
+                    resource_name,
+                    quantity,
+                    unit_price
+                ).to_dict()
+            else:
+                from src.gaia.business_commerce import BusinessCommerce
+
+                result = BusinessCommerce.sell_to_citizen(
+                    seller, citizen, resource_name, quantity
+                )
+
+            if result["success"] and hasattr(citizen, "add_memory"):
                 citizen.add_memory(
                     f"Purchased {quantity} {resource_name}.",
                     current_tick
                 )
 
-            return result.to_dict()
+            return result
 
         # Step 6: Execute the rest action
         # Step 52: Execute configured job work and production
@@ -310,6 +319,15 @@ class ActionExecutor:
 
             # Step 58: Apply production only after all checks pass.
             if business is not None and job.recipe_id is not None:
+                if world is not None and not business.can_worker_produce(
+                    citizen, job, world.current_tick
+                ):
+                    return {
+                        "success": False,
+                        "action": "work",
+                        "reason": "Business did not select this recipe this tick."
+                    }
+
                 production_result = business.produce(job.recipe_id)
 
                 if not production_result["success"]:

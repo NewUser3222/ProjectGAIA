@@ -22,6 +22,8 @@ class Business:
         self.jobs = {}
         self.recipes = {}
         self.employee_jobs = {}
+        self._planned_production = None
+        self._market_plan_tick = None
 
         self.active = True
 
@@ -243,6 +245,30 @@ class Business:
                         resource_name, quantity
                     )
         return result
+
+    # Step 80: Evaluate configured recipes against market conditions and workers.
+    def evaluate_production_plan(self, world):
+        from src.gaia.business_planning import BusinessProductionPlanner
+
+        return BusinessProductionPlanner.evaluate(self, world)
+
+    # Step 80: Procure the chosen recipe's missing inputs for the current tick.
+    def prepare_production(self, world):
+        from src.gaia.business_planning import BusinessProductionPlanner
+
+        return BusinessProductionPlanner.prepare(self, world)
+
+    # Step 80: Restrict recipe work to the worker selected for this market plan.
+    def can_worker_produce(self, worker, job, tick):
+        plan = self._planned_production
+        return (
+            self.active
+            and self._market_plan_tick == tick
+            and plan is not None
+            and plan["worker"] is worker
+            and plan["job"] is job
+            and plan["recipe_id"] == job.recipe_id
+        )
 
     # Step 57: Employ a citizen into a specific business job
     def employ(self, citizen, job):

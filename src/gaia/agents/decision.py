@@ -65,36 +65,50 @@ class DecisionEngine:
         # Step 49: Consider direct peer-to-peer food purchases when gathering
         # is unavailable. Economic behavior remains optional.
         if hunger > 50 and citizen.get_item_quantity("food") <= 0 and world is not None:
-            for seller in world.citizens:
-                if seller is citizen or not seller.is_alive():
+            sellers = list(world.citizens) + world.get_active_businesses()
+            affordable_offers = []
+            for seller in sellers:
+                if seller is citizen:
                     continue
-
+                if hasattr(seller, "is_alive") and not seller.is_alive():
+                    continue
+                if hasattr(seller, "is_active") and not seller.is_active():
+                    continue
                 if seller.get_item_quantity("food") <= 0:
-                    continue
-
-                if citizen.get_money() <= 0:
                     continue
 
                 food_price = world.get_market_price(
                     "food",
                     supply=seller.get_item_quantity("food"),
                 )
-
                 if citizen.get_money() >= food_price:
-                    options.append(
-                        ActionOption(
-                            "buy_resource",
-                            "Buy Food",
-                            urgency_score=float(hunger),
-                            requirements={
-                                "seller": seller,
-                                "resource": "food",
-                                "quantity": 1,
-                                "unit_price": food_price
-                            }
-                        )
+                    affordable_offers.append((food_price, seller))
+
+            if affordable_offers:
+                food_price, seller = min(
+                    affordable_offers,
+                    key=lambda offer: (
+                        offer[0],
+                        getattr(
+                            offer[1],
+                            "business_id",
+                            getattr(offer[1], "citizen_id", ""),
+                        ),
+                    ),
+                )
+                options.append(
+                    ActionOption(
+                        "buy_resource",
+                        "Buy Food",
+                        urgency_score=float(hunger),
+                        requirements={
+                            "seller": seller,
+                            "resource": "food",
+                            "quantity": 1,
+                            "unit_price": food_price
+                        }
                     )
-                    break
+                )
 
         # Step 55: Work is an optional low-priority economic action.
         if citizen.has_active_job():
@@ -102,13 +116,23 @@ class DecisionEngine:
 
             if citizen.can_perform_job(job):
                 if citizen.energy >= job.energy_cost:
-                    options.append(
-                        ActionOption(
-                            "work",
-                            "Work",
-                            urgency_score=20.0
+                    business = citizen.get_employer()
+                    recipe_work_is_planned = (
+                        business is None
+                        or job.recipe_id is None
+                        or world is None
+                        or business.can_worker_produce(
+                            citizen, job, world.current_tick
                         )
                     )
+                    if recipe_work_is_planned:
+                        options.append(
+                            ActionOption(
+                                "work",
+                                "Work",
+                                urgency_score=20.0
+                            )
+                        )
 
         options.sort(
             key=lambda x: x.urgency_score,
