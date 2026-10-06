@@ -27,6 +27,24 @@ def test_business_has_independent_money_and_inventory():
     assert second.get_item_quantity("food") == 0
 
 
+def test_business_inventory_capacity_is_configurable_and_enforced():
+    business = Business("small", "Small Business", inventory_capacity=5)
+    business.add_item("wood", 3)
+
+    assert business.get_inventory_quantity() == 3
+    assert business.get_inventory_space() == 2
+    assert business.can_add_items({"food": 2})
+    assert not business.can_add_items({"food": 3})
+
+    try:
+        business.add_item("food", 3)
+        assert False, "Inventory capacity should reject excess stock."
+    except ValueError as error:
+        assert "capacity" in str(error).lower()
+
+    assert business.inventory == {"wood": 3.0}
+
+
 def test_business_ownership():
     owner = Citizen(1, "Owner")
     business = Business("biz_001", "Owned Business")

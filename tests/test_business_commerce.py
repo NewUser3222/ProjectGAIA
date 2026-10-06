@@ -183,3 +183,25 @@ def test_inactive_business_cannot_sell_resources():
     assert seller.get_item_quantity("wood") == 2
     assert buyer.get_money() == 100
     assert seller.get_money() == 0
+
+
+def test_business_purchase_respects_buyer_storage_capacity_atomically():
+    from src.gaia.core.simulation import Simulation
+
+    simulation = Simulation()
+    buyer = Business("buyer", "Buyer", inventory_capacity=1)
+    seller = Business("seller", "Seller")
+    buyer.change_money(100)
+    seller.add_item("wood", 2)
+    simulation.add_business(buyer)
+    simulation.add_business(seller)
+
+    result = buyer.buy_resource(seller, "wood", 2)
+
+    assert result["success"] is False
+    assert buyer.get_money() == 100
+    assert seller.get_money() == 0
+    assert buyer.inventory == {}
+    assert seller.inventory == {"wood": 2.0}
+    assert simulation.world.market_observations.to_dict()["current"]["trade"] == {}
+    assert simulation.world.market_observations.to_dict()["current"]["sales"] == {}

@@ -301,3 +301,32 @@ def test_business_production_tracks_completed_demand_and_unsold_stock():
     business.add_item("food", 1)
     inventory_plan = business.evaluate_production_plan(simulation.world)
     assert inventory_plan["success"] is False
+
+
+def test_production_planner_respects_temporary_and_resulting_storage_capacity():
+    simulation = Simulation()
+    business = Business("compact", "Compact Works", inventory_capacity=2)
+    business.change_money(100)
+    business.add_item("stone", 1)
+    worker = Citizen("worker", "Worker", age=30)
+    supplier = Citizen("supplier", "Supplier", age=30)
+    supplier.add_item("wood", 2)
+    business.add_recipe(
+        ProductionRecipe(
+            "metal", "Smelt Metal", inputs={"wood": 2}, outputs={"metal": 2}
+        )
+    )
+    job = Job("smelter", "Smelter", recipe_id="metal")
+    business.add_job(job)
+    business.employ(worker, job)
+    simulation.add_citizen(worker)
+    simulation.add_citizen(supplier)
+    simulation.add_business(business)
+
+    plan = business.prepare_production(simulation.world)
+
+    assert plan["success"] is False
+    assert business.get_money() == 100
+    assert business.inventory == {"stone": 1.0}
+    assert supplier.inventory == {"wood": 2}
+    assert simulation.world.market_observations.to_dict()["current"]["trade"] == {}

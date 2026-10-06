@@ -28,6 +28,23 @@ def test_production_recipe_consumes_inputs_and_creates_outputs():
     assert business.get_item_quantity("bread") == 4
 
 
+def test_business_capacity_rejects_production_without_consuming_inputs():
+    business = Business("compact", "Compact Works", inventory_capacity=2.5)
+    business.add_item("wood", 1)
+    business.add_item("stone", 1)
+    recipe = ProductionRecipe(
+        "metal", "Smelt Metal", inputs={"wood": 1}, outputs={"metal": 2}
+    )
+    business.add_recipe(recipe)
+    before = dict(business.inventory)
+
+    result = business.produce("metal")
+
+    assert result["success"] is False
+    assert "capacity" in result["reason"].lower()
+    assert business.inventory == before
+
+
 def test_missing_inputs_prevent_production_without_mutation():
     business = Business("bakery", "Bakery")
     business.add_item("food", 1)

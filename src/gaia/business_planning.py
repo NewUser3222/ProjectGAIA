@@ -131,12 +131,26 @@ class BusinessProductionPlanner:
             return None
 
         estimated_margin = expected_revenue - estimated_cost
+        inventory_before = business.get_inventory_quantity()
+        procurement_quantity = sum(
+            purchase["quantity"] for purchase in purchases
+        )
+        inventory_after_procurement = inventory_before + procurement_quantity
+        inventory_after_production = (
+            inventory_after_procurement
+            - sum(recipe.inputs.values())
+            + sum(recipe.outputs.values())
+        )
         if (
             not math.isfinite(expected_revenue)
             or not math.isfinite(estimated_cost)
             or not math.isfinite(estimated_margin)
+            or not math.isfinite(inventory_after_procurement)
+            or not math.isfinite(inventory_after_production)
             or estimated_margin <= 0
             or procurement_cost > business.get_money()
+            or inventory_after_procurement > business.get_inventory_capacity()
+            or inventory_after_production > business.get_inventory_capacity()
         ):
             return None
 

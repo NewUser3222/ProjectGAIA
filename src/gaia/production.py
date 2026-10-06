@@ -54,12 +54,20 @@ class ProductionSystem:
     """Executes configured production recipes atomically."""
 
     @staticmethod
-    def produce(inventory, recipe):
+    def produce(inventory, recipe, inventory_capacity=None):
         if inventory is None:
             raise ValueError("Inventory cannot be None.")
 
         if not isinstance(recipe, ProductionRecipe):
             raise ValueError("Recipe must be a ProductionRecipe instance.")
+
+        if inventory_capacity is not None:
+            try:
+                inventory_capacity = float(inventory_capacity)
+            except (TypeError, ValueError, OverflowError):
+                raise ValueError("Inventory capacity must be finite and nonnegative.")
+            if not math.isfinite(inventory_capacity) or inventory_capacity < 0:
+                raise ValueError("Inventory capacity must be finite and nonnegative.")
 
         # Step 58: Validate every input before changing inventory.
         if not recipe.can_produce(inventory):
@@ -69,13 +77,52 @@ class ProductionSystem:
                 "reason": "Missing production inputs."
             }
 
-        # Step 58: Consume all configured inputs.
+        # Build and validate the entire result before mutating inventory.
+        next_inventory = dict(inventory)
         for resource_name, quantity in recipe.inputs.items():
-            inventory[resource_name] = inventory.get(resource_name, 0) - quantity
+            remaining = next_inventory.get(resource_name, 0) - quantity
+            if remaining == 0:
+                next_inventory.pop(resource_name, None)
+            else:
+                next_inventory[resource_name] = remaining
 
         # Step 58: Create only configured outputs.
         for resource_name, quantity in recipe.outputs.items():
-            inventory[resource_name] = inventory.get(resource_name, 0) + quantity
+            next_inventory[resource_name] = (
+                next_inventory.get(resource_name, 0) + quantity
+            )
+
+        try:
+            for resource_name, quantity in next_inventory.items():
+                quantity = float(quantity)
+                if not math.isfinite(quantity) or quantity < 0:
+                    raise ValueError
+                next_inventory[resource_name] = quantity
+        except (TypeError, ValueError, OverflowError):
+            return {
+                "success": False,
+                "recipe_id": recipe.recipe_id,
+                "reason": "Production result would create invalid inventory.",
+            }
+        resulting_quantity = sum(next_inventory.values())
+        if not math.isfinite(resulting_quantity):
+            return {
+                "success": False,
+                "recipe_id": recipe.recipe_id,
+                "reason": "Production result would create invalid inventory.",
+            }
+        if (
+            inventory_capacity is not None
+            and resulting_quantity > inventory_capacity
+        ):
+            return {
+                "success": False,
+                "recipe_id": recipe.recipe_id,
+                "reason": "Production would exceed business inventory capacity.",
+            }
+
+        inventory.clear()
+        inventory.update(next_inventory)
 
         return {
             "success": True,

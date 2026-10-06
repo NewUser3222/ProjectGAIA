@@ -203,6 +203,14 @@ class BusinessCommerce:
                 "reason": "Transaction would create non-finite inventory.",
                 "amount": 0.0,
             }
+        if hasattr(buyer, "can_add_items") and not buyer.can_add_items(
+            buyer_additions
+        ):
+            return {
+                "success": False,
+                "reason": "Buyer inventory capacity would be exceeded.",
+                "amount": 0.0,
+            }
         for (observer, resource_name), quantity in observer_trades.items():
             current = observer._current["trade"].get(resource_name, 0.0)
             if not math.isfinite(current + quantity):
@@ -315,6 +323,15 @@ class BusinessCommerce:
             return {
                 "success": False,
                 "reason": "Transaction would create a non-finite balance.",
+                "amount": 0.0,
+            }
+
+        if hasattr(buyer, "can_add_items") and not buyer.can_add_items(
+            {resource_name: quantity}
+        ):
+            return {
+                "success": False,
+                "reason": "Buyer inventory capacity would be exceeded.",
                 "amount": 0.0,
             }
 

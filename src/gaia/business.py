@@ -3,9 +3,11 @@ import math
 
 # Step 57: Business employment integration
 class Business:
-    """Represents an independent economic business or organization."""
+    """An economic entity with its own bounded, aggregate-unit inventory."""
 
-    def __init__(self, business_id, name, owners=None):
+    def __init__(
+        self, business_id, name, owners=None, inventory_capacity=100.0
+    ):
         if not business_id:
             raise ValueError("Business ID cannot be empty.")
 
@@ -16,6 +18,9 @@ class Business:
         self.name = name
         self.money = 0.0
         self.inventory = {}
+        self.inventory_capacity = self._validate_inventory_capacity(
+            inventory_capacity
+        )
 
         self.owners = []
         self.employees = {}
@@ -88,19 +93,36 @@ class Business:
         if not resource_name:
             raise ValueError("Resource name cannot be empty.")
 
-        if quantity <= 0:
-            raise ValueError("Inventory quantity must be positive.")
+        try:
+            quantity = float(quantity)
+        except (TypeError, ValueError, OverflowError):
+            raise ValueError("Inventory quantity must be finite and positive.")
+        if not math.isfinite(quantity) or quantity <= 0:
+            raise ValueError("Inventory quantity must be finite and positive.")
 
-        self.inventory[resource_name] = (
-            self.inventory.get(resource_name, 0) + quantity
+        next_quantity = self.inventory.get(resource_name, 0) + quantity
+        if not math.isfinite(next_quantity):
+            raise ValueError("Business inventory must remain finite.")
+        projected_total = (
+            self.get_inventory_quantity()
+            - self.inventory.get(resource_name, 0)
+            + next_quantity
         )
+        if projected_total > self.inventory_capacity:
+            raise ValueError("Business inventory capacity would be exceeded.")
+
+        self.inventory[resource_name] = next_quantity
 
     def remove_item(self, resource_name, quantity):
         if not resource_name:
             raise ValueError("Resource name cannot be empty.")
 
-        if quantity <= 0:
-            raise ValueError("Inventory quantity must be positive.")
+        try:
+            quantity = float(quantity)
+        except (TypeError, ValueError, OverflowError):
+            raise ValueError("Inventory quantity must be finite and positive.")
+        if not math.isfinite(quantity) or quantity <= 0:
+            raise ValueError("Inventory quantity must be finite and positive.")
 
         current_quantity = self.inventory.get(resource_name, 0)
 
@@ -119,6 +141,57 @@ class Business:
             raise ValueError("Resource name cannot be empty.")
 
         return self.inventory.get(resource_name, 0)
+
+    def get_inventory_quantity(self):
+        return sum(self.inventory.values())
+
+    def get_inventory_space(self):
+        return max(0.0, self.inventory_capacity - self.get_inventory_quantity())
+
+    def can_add_items(self, additions):
+        if not isinstance(additions, dict):
+            return False
+        added_quantity = 0.0
+        try:
+            for resource_name, quantity in additions.items():
+                quantity = float(quantity)
+                if (
+                    not resource_name
+                    or not math.isfinite(quantity)
+                    or quantity <= 0
+                ):
+                    return False
+                if not math.isfinite(
+                    self.get_item_quantity(resource_name) + quantity
+                ):
+                    return False
+                added_quantity += quantity
+        except (TypeError, ValueError, OverflowError):
+            return False
+        projected_total = self.get_inventory_quantity() + added_quantity
+        return (
+            math.isfinite(projected_total)
+            and projected_total <= self.inventory_capacity
+        )
+
+    def get_inventory_capacity(self):
+        return self.inventory_capacity
+
+    @staticmethod
+    def _validate_inventory_capacity(capacity):
+        try:
+            capacity = float(capacity)
+        except (TypeError, ValueError, OverflowError):
+            raise ValueError("Inventory capacity must be finite and nonnegative.")
+        if not math.isfinite(capacity) or capacity < 0:
+            raise ValueError("Inventory capacity must be finite and nonnegative.")
+        return capacity
+
+    def set_inventory_capacity(self, capacity):
+        capacity = self._validate_inventory_capacity(capacity)
+        if capacity < self.get_inventory_quantity():
+            raise ValueError("Capacity cannot be lower than current inventory.")
+        self.inventory_capacity = capacity
 
     def get_available_quantity(self, resource_name):
         """Return inventory not committed to the current production plan."""
@@ -251,9 +324,32 @@ class Business:
                 "reason": "Business inputs are committed to another recipe this tick."
             }
 
-        result = ProductionSystem.produce(self.inventory, recipe)
+        market_observations = getattr(self, "_market_observations", None)
+        if market_observations is not None:
+            for activity, quantities in (
+                ("consumption", recipe.inputs),
+                ("production", recipe.outputs),
+            ):
+                if any(
+                    not math.isfinite(
+                        market_observations._current[activity].get(
+                            resource_name, 0.0
+                        ) + quantity
+                    )
+                    for resource_name, quantity in quantities.items()
+                ):
+                    return {
+                        "success": False,
+                        "recipe_id": recipe_id,
+                        "reason": "Market activity total would be non-finite."
+                    }
+
+        result = ProductionSystem.produce(
+            self.inventory,
+            recipe,
+            inventory_capacity=self.inventory_capacity,
+        )
         if result["success"]:
-            market_observations = getattr(self, "_market_observations", None)
             if market_observations is not None:
                 for resource_name, quantity in recipe.inputs.items():
                     market_observations.record_consumption(
