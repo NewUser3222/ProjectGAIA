@@ -1,3 +1,6 @@
+import math
+
+
 # Step 1: Define the Citizen lifecycle states
 ALIVE = "alive"
 DEAD = "dead"
@@ -393,8 +396,17 @@ class Citizen:
 
     # Step 27: Change the citizen's money
     def change_money(self, amount):
+        try:
+            amount = float(amount)
+        except (TypeError, ValueError, OverflowError):
+            raise ValueError("Money change must be a finite number.")
+        if not math.isfinite(amount):
+            raise ValueError("Money change must be a finite number.")
+
         new_amount = self.money + amount
 
+        if not math.isfinite(new_amount):
+            raise ValueError("Citizen money must remain finite.")
         if new_amount < 0:
             raise ValueError("Citizen cannot have negative money.")
 

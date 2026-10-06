@@ -1,3 +1,5 @@
+import math
+
 from src.gaia.economy import RESOURCE_VALUES
 
 
@@ -17,6 +19,16 @@ class MarketPricing:
         if resource_name not in RESOURCE_VALUES:
             raise ValueError(f"Unknown resource: {resource_name}")
 
+        observations = (supply, recent_consumption, recent_production)
+        try:
+            observations = tuple(float(value) for value in observations)
+        except (TypeError, ValueError, OverflowError):
+            raise ValueError("Market observations must be finite numbers.")
+
+        if any(not math.isfinite(value) for value in observations):
+            raise ValueError("Market observations must be finite numbers.")
+
+        supply, recent_consumption, recent_production = observations
         if supply < 0:
             raise ValueError("Supply cannot be negative.")
 

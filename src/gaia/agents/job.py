@@ -1,3 +1,6 @@
+import math
+
+
 # Step 1: Define the Job configuration
 class Job:
     """Configuration for a citizen job."""
@@ -18,11 +21,17 @@ class Job:
         if not name:
             raise ValueError("Job name cannot be empty.")
 
-        if wage < 0:
-            raise ValueError("Wage cannot be negative.")
+        try:
+            wage = float(wage)
+            energy_cost = float(energy_cost)
+        except (TypeError, ValueError, OverflowError):
+            raise ValueError("Wage and energy cost must be finite numbers.")
 
-        if energy_cost < 0:
-            raise ValueError("Energy cost cannot be negative.")
+        if not math.isfinite(wage) or wage < 0:
+            raise ValueError("Wage must be finite and nonnegative.")
+
+        if not math.isfinite(energy_cost) or energy_cost < 0:
+            raise ValueError("Energy cost must be finite and nonnegative.")
 
         self.job_id = job_id
         self.name = name

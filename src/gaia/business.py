@@ -1,3 +1,6 @@
+import math
+
+
 # Step 57: Business employment integration
 class Business:
     """Represents an independent economic business or organization."""
@@ -58,8 +61,17 @@ class Business:
 
     # Step 56: Money
     def change_money(self, amount):
-        new_balance = self.money + float(amount)
+        try:
+            amount = float(amount)
+        except (TypeError, ValueError, OverflowError):
+            raise ValueError("Money change must be a finite number.")
+        if not math.isfinite(amount):
+            raise ValueError("Money change must be a finite number.")
 
+        new_balance = self.money + amount
+
+        if not math.isfinite(new_balance):
+            raise ValueError("Business money must remain finite.")
         if new_balance < 0:
             raise ValueError("Business money cannot become negative.")
 

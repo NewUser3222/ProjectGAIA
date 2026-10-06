@@ -1,3 +1,5 @@
+import math
+
 from src.gaia.economy import get_resource_value
 from src.gaia.economy_transactions import EconomicTransaction
 from src.gaia.market import MarketPricing
@@ -10,8 +12,12 @@ class BusinessCommerce:
     def calculate_price(resource_name, seller, quantity=1):
         if seller is None:
             raise ValueError("Seller cannot be None.")
-        if quantity <= 0:
-            raise ValueError("Quantity must be positive.")
+        try:
+            quantity = float(quantity)
+        except (TypeError, ValueError, OverflowError):
+            raise ValueError("Quantity must be finite and positive.")
+        if not math.isfinite(quantity) or quantity <= 0:
+            raise ValueError("Quantity must be finite and positive.")
 
         supply = seller.get_item_quantity(resource_name)
 
@@ -79,6 +85,13 @@ class BusinessCommerce:
 
         total_price = unit_price * quantity
 
+        if not math.isfinite(total_price):
+            return {
+                "success": False,
+                "reason": "Transaction total must be finite.",
+                "amount": 0.0,
+            }
+
         if seller.get_item_quantity(resource_name) < quantity:
             return {
                 "success": False,
@@ -90,6 +103,15 @@ class BusinessCommerce:
             return {
                 "success": False,
                 "reason": "Buyer does not have enough money.",
+                "amount": 0.0,
+            }
+
+        if not math.isfinite(buyer.get_money() - total_price) or not math.isfinite(
+            seller.get_money() + total_price
+        ):
+            return {
+                "success": False,
+                "reason": "Transaction would create a non-finite balance.",
                 "amount": 0.0,
             }
 

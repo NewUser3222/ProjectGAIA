@@ -1,3 +1,4 @@
+import math
 import unittest
 
 from src.gaia.agents.citizen import Citizen
@@ -225,3 +226,81 @@ class TestEconomicFoundation(unittest.TestCase):
             + seller.get_item_quantity("food"),
             initial_food
         )
+
+    def test_non_finite_money_transfer_is_rejected_without_mutation(self):
+        for amount in (math.nan, math.inf, -math.inf):
+            sender = Citizen("sender", "Sender")
+            receiver = Citizen("receiver", "Receiver")
+            sender.change_money(25)
+
+            result = EconomicTransaction.transfer_money(
+                sender, receiver, amount
+            )
+
+            self.assertFalse(result.success)
+            self.assertEqual(sender.get_money(), 25)
+            self.assertEqual(receiver.get_money(), 0)
+
+    def test_non_finite_resource_purchase_is_rejected_without_mutation(self):
+        for quantity, unit_price in (
+            (math.nan, 10),
+            (1, math.inf),
+            (math.inf, 1),
+        ):
+            buyer = Citizen("buyer", "Buyer")
+            seller = Citizen("seller", "Seller")
+            buyer.change_money(100)
+            seller.add_item("food", 5)
+
+            result = EconomicTransaction.purchase_resource(
+                buyer, seller, "food", quantity, unit_price
+            )
+
+            self.assertFalse(result.success)
+            self.assertEqual(buyer.get_money(), 100)
+            self.assertEqual(seller.get_money(), 0)
+            self.assertEqual(buyer.get_item_quantity("food"), 0)
+            self.assertEqual(seller.get_item_quantity("food"), 5)
+
+    def test_balance_overflow_rejects_money_and_resource_transfers_atomically(self):
+        sender = Citizen("sender", "Sender")
+        receiver = Citizen("receiver", "Receiver")
+        sender.change_money(1e308)
+        receiver.change_money(1e308)
+
+        money_result = EconomicTransaction.transfer_money(
+            sender, receiver, 1e308
+        )
+
+        self.assertFalse(money_result.success)
+        self.assertEqual(sender.get_money(), 1e308)
+        self.assertEqual(receiver.get_money(), 1e308)
+
+        buyer = Citizen("buyer", "Buyer")
+        seller = Citizen("seller", "Seller")
+        buyer.change_money(1e308)
+        seller.change_money(1e308)
+        seller.add_item("food", 1)
+
+        purchase_result = EconomicTransaction.purchase_resource(
+            buyer, seller, "food", 1, 1e308
+        )
+
+        self.assertFalse(purchase_result.success)
+        self.assertEqual(buyer.get_money(), 1e308)
+        self.assertEqual(seller.get_money(), 1e308)
+        self.assertEqual(buyer.get_item_quantity("food"), 0)
+        self.assertEqual(seller.get_item_quantity("food"), 1)
+
+    def test_money_balances_reject_non_finite_changes(self):
+        from src.gaia.business import Business
+
+        entities = (
+            Citizen("c", "Citizen"),
+            Business("b", "Business"),
+        )
+        for entity in entities:
+            for amount in (math.nan, math.inf, -math.inf):
+                with self.assertRaises(ValueError):
+                    entity.change_money(amount)
+            self.assertEqual(entity.get_money(), 0)

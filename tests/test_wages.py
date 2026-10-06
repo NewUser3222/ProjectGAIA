@@ -1,4 +1,5 @@
 # Step 1: Import unittest
+import math
 import unittest
 
 # Step 2: Import GAIA models
@@ -181,6 +182,51 @@ class TestWages(unittest.TestCase):
 
         self.assertTrue(result["success"])
         self.assertEqual(before, after)
+
+    def test_inactive_or_dead_participants_cannot_process_payroll(self):
+        from src.gaia.business import Business
+
+        worker = Citizen("worker", "Worker")
+        business = Business("business", "Business")
+        business.change_money(100)
+        business.deactivate()
+
+        with self.assertRaises(ValueError):
+            EconomicTransaction.pay_wage(business, worker, 10)
+
+        business.activate()
+        worker.die()
+        with self.assertRaises(ValueError):
+            EconomicTransaction.pay_wage(business, worker, 10)
+
+        self.assertEqual(business.get_money(), 100)
+        self.assertEqual(worker.get_money(), 0)
+
+    def test_non_finite_wages_are_rejected(self):
+        payer = Citizen("payer", "Payer")
+        worker = Citizen("worker", "Worker")
+        payer.change_money(100)
+
+        for wage in (math.nan, math.inf, -math.inf):
+            with self.assertRaises(ValueError):
+                EconomicTransaction.pay_wage(payer, worker, wage)
+            with self.assertRaises(ValueError):
+                Job("job", "Job", production={"food": 1}, wage=wage)
+
+        self.assertEqual(payer.get_money(), 100)
+        self.assertEqual(worker.get_money(), 0)
+
+    def test_payroll_balance_overflow_is_rejected_atomically(self):
+        payer = Citizen("payer", "Payer")
+        worker = Citizen("worker", "Worker")
+        payer.change_money(1e308)
+        worker.change_money(1e308)
+
+        with self.assertRaises(ValueError):
+            EconomicTransaction.pay_wage(payer, worker, 1e308)
+
+        self.assertEqual(payer.get_money(), 1e308)
+        self.assertEqual(worker.get_money(), 1e308)
 
     # Step 10: Test zero-wage jobs do not require a payer
     def test_zero_wage_job(self):

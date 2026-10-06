@@ -1,4 +1,5 @@
 import unittest
+import math
 
 from src.gaia.market import MarketPricing
 
@@ -79,6 +80,19 @@ class TestMarketPricing(unittest.TestCase):
                 "food",
                 supply=-1
             )
+
+    def test_non_finite_market_observations_rejected(self):
+        for value in (math.nan, math.inf, -math.inf):
+            with self.assertRaises(ValueError):
+                MarketPricing.calculate_price("food", supply=value)
+            with self.assertRaises(ValueError):
+                MarketPricing.calculate_price(
+                    "food", supply=10, recent_consumption=value
+                )
+            with self.assertRaises(ValueError):
+                MarketPricing.calculate_price(
+                    "food", supply=10, recent_production=value
+                )
 
 
 if __name__ == "__main__":

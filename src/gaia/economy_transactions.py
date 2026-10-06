@@ -1,5 +1,7 @@
 # Step 47: Define direct citizen economic transactions
 
+import math
+
 from src.gaia.agents.citizen import Citizen
 
 
@@ -50,18 +52,47 @@ class EconomicTransaction:
         return None
 
     @staticmethod
+    def _is_finite_positive(value):
+        try:
+            return math.isfinite(float(value)) and float(value) > 0
+        except (TypeError, ValueError, OverflowError):
+            return False
+
+    @staticmethod
+    def _validate_wage_participants(payer, worker):
+        from src.gaia.business import Business
+
+        if not isinstance(worker, Citizen):
+            return "Wage recipient must be a Citizen object."
+        if not worker.is_alive():
+            return "Dead citizens cannot receive wages."
+        if payer is worker:
+            return "Wage payer and worker must be different."
+        if isinstance(payer, Citizen):
+            if not payer.is_alive():
+                return "Dead citizens cannot pay wages."
+        elif isinstance(payer, Business):
+            if not payer.is_active():
+                return "Inactive businesses cannot pay wages."
+        else:
+            return "Wage payer must be a living Citizen or active Business."
+        return None
+
+    @staticmethod
     def transfer_money(sender, receiver, amount):
         reason = EconomicTransaction._validate_participants(sender, receiver)
 
         if reason:
             return TransactionResult(False, "money_transfer", reason=reason)
 
-        if amount <= 0:
+        if not EconomicTransaction._is_finite_positive(amount):
             return TransactionResult(
                 False,
                 "money_transfer",
                 reason="Transaction amount must be greater than zero."
             )
+
+        amount = float(amount)
 
         if sender.get_money() < amount:
             return TransactionResult(
@@ -69,6 +100,16 @@ class EconomicTransaction:
                 "money_transfer",
                 amount=amount,
                 reason="Insufficient funds."
+            )
+
+        if not math.isfinite(sender.get_money() - amount) or not math.isfinite(
+            receiver.get_money() + amount
+        ):
+            return TransactionResult(
+                False,
+                "money_transfer",
+                amount=amount,
+                reason="Transaction would create a non-finite balance."
             )
 
         sender.change_money(-amount)
@@ -83,13 +124,22 @@ class EconomicTransaction:
 
     @staticmethod
     def pay_wage(payer, worker, amount):
-        EconomicTransaction._validate_participants(payer, worker)
+        reason = EconomicTransaction._validate_wage_participants(payer, worker)
+        if reason:
+            raise ValueError(reason)
 
-        if amount <= 0:
-            raise ValueError("Wage must be greater than zero.")
+        if not EconomicTransaction._is_finite_positive(amount):
+            raise ValueError("Wage must be a finite number greater than zero.")
+
+        amount = float(amount)
 
         if payer.get_money() < amount:
             raise ValueError("Payer does not have enough money.")
+
+        if not math.isfinite(payer.get_money() - amount) or not math.isfinite(
+            worker.get_money() + amount
+        ):
+            raise ValueError("Wage would create a non-finite balance.")
 
         payer.change_money(-amount)
         worker.change_money(amount)
@@ -117,14 +167,14 @@ class EconomicTransaction:
                 reason=reason
             )
 
-        if quantity <= 0:
+        if not EconomicTransaction._is_finite_positive(quantity):
             return TransactionResult(
                 False,
                 "resource_purchase",
                 reason="Quantity must be greater than zero."
             )
 
-        if unit_price <= 0:
+        if not EconomicTransaction._is_finite_positive(unit_price):
             return TransactionResult(
                 False,
                 "resource_purchase",
@@ -140,7 +190,17 @@ class EconomicTransaction:
                 reason="Seller does not possess enough resources."
             )
 
+        unit_price = float(unit_price)
+        quantity = float(quantity)
         total_cost = unit_price * quantity
+        if not math.isfinite(total_cost):
+            return TransactionResult(
+                False,
+                "resource_purchase",
+                resource=resource_name,
+                quantity=quantity,
+                reason="Transaction total must be finite."
+            )
 
         if buyer.get_money() < total_cost:
             return TransactionResult(
@@ -150,6 +210,18 @@ class EconomicTransaction:
                 resource=resource_name,
                 quantity=quantity,
                 reason="Insufficient funds."
+            )
+
+        if not math.isfinite(buyer.get_money() - total_cost) or not math.isfinite(
+            seller.get_money() + total_cost
+        ):
+            return TransactionResult(
+                False,
+                "resource_purchase",
+                amount=total_cost,
+                resource=resource_name,
+                quantity=quantity,
+                reason="Transaction would create a non-finite balance."
             )
 
         # Validate everything before mutating either participant.
