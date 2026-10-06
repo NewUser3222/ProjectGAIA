@@ -1,7 +1,5 @@
 import math
 
-from src.gaia.economy import get_resource_value
-from src.gaia.economy_transactions import EconomicTransaction
 from src.gaia.market import MarketPricing
 
 
@@ -19,14 +17,27 @@ class BusinessCommerce:
         if not math.isfinite(quantity) or quantity <= 0:
             raise ValueError("Quantity must be finite and positive.")
 
-        supply = seller.get_item_quantity(resource_name)
+        unit_price = BusinessCommerce._unit_price(resource_name, seller)
+        total_price = unit_price * quantity
+        if not math.isfinite(total_price):
+            raise ValueError("Quoted price must remain finite.")
+        return total_price
 
+    @staticmethod
+    def _unit_price(resource_name, seller):
+        observations = getattr(seller, "_market_observations", None)
+        recent = (
+            observations.get_recent(resource_name)
+            if observations is not None
+            else {"consumption": 0.0, "production": 0.0, "trade": 0.0}
+        )
         return MarketPricing.calculate_price(
             resource_name,
-            supply=supply,
-            recent_consumption=0,
-            recent_production=0,
-        ) * quantity
+            supply=seller.get_item_quantity(resource_name),
+            recent_consumption=recent["consumption"],
+            recent_production=recent["production"],
+            recent_trade=recent["trade"],
+        )
 
     @staticmethod
     def buy_from_citizen(business, seller, resource_name, quantity):
@@ -72,16 +83,15 @@ class BusinessCommerce:
         if buyer is seller:
             raise ValueError("Buyer and seller must be different.")
 
-        if quantity <= 0:
-            raise ValueError("Quantity must be positive.")
+        try:
+            quantity = float(quantity)
+        except (TypeError, ValueError, OverflowError):
+            raise ValueError("Quantity must be finite and positive.")
+        if not math.isfinite(quantity) or quantity <= 0:
+            raise ValueError("Quantity must be finite and positive.")
 
         # Validate the resource before any state mutation.
-        unit_price = MarketPricing.calculate_price(
-            resource_name,
-            supply=seller.get_item_quantity(resource_name),
-            recent_consumption=0,
-            recent_production=0,
-        )
+        unit_price = BusinessCommerce._unit_price(resource_name, seller)
 
         total_price = unit_price * quantity
 
@@ -121,6 +131,14 @@ class BusinessCommerce:
 
         buyer.change_money(-total_price)
         seller.change_money(total_price)
+
+        market_observations = getattr(buyer, "_market_observations", None)
+        if (
+            market_observations is not None
+            and market_observations
+            is getattr(seller, "_market_observations", None)
+        ):
+            market_observations.record_trade(resource_name, quantity)
 
         return {
             "success": True,

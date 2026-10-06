@@ -1,3 +1,5 @@
+import math
+
 from src.gaia.agents.job import Job
 
 
@@ -12,11 +14,8 @@ class ProductionRecipe:
 
         self.recipe_id = recipe_id
         self.name = name
-        self.inputs = dict(inputs or {})
-        self.outputs = dict(outputs or {})
-
-        self._validate_resources(self.inputs, "input")
-        self._validate_resources(self.outputs, "output")
+        self.inputs = self._validate_resources(dict(inputs or {}), "input")
+        self.outputs = self._validate_resources(dict(outputs or {}), "output")
 
         if not self.outputs:
             raise ValueError("Production recipe must have at least one output.")
@@ -28,10 +27,17 @@ class ProductionRecipe:
                 raise ValueError(
                     f"Production {resource_type} resource name cannot be empty."
                 )
-            if quantity <= 0:
+            try:
+                quantity = float(quantity)
+                quantity_is_valid = math.isfinite(quantity) and quantity > 0
+            except (TypeError, ValueError, OverflowError):
+                quantity_is_valid = False
+            if not quantity_is_valid:
                 raise ValueError(
-                    f"Production {resource_type} quantities must be greater than zero."
+                    f"Production {resource_type} quantities must be finite and greater than zero."
                 )
+            resources[resource_name] = quantity
+        return resources
 
     def can_produce(self, inventory):
         if inventory is None:

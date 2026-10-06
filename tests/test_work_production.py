@@ -1,4 +1,5 @@
 # Step 1: Import unittest
+import math
 import unittest
 
 # Step 2: Import GAIA models
@@ -192,6 +193,20 @@ class TestWorkProduction(unittest.TestCase):
         )
         self.assertEqual(citizen.get_item_quantity("food"), 0)
         self.assertEqual(citizen.get_item_quantity("wood"), 0)
+        self.assertEqual(citizen.energy, 100.0)
+
+    def test_non_finite_job_production_is_rejected_before_mutation(self):
+        citizen = Citizen("CIT-001", "Worker")
+        citizen.set_job(
+            Job("worker", "Worker", production={"food": math.nan})
+        )
+
+        result = ActionExecutor().execute(
+            citizen, ActionOption("work", "Work")
+        )
+
+        self.assertFalse(result["success"])
+        self.assertEqual(citizen.get_item_quantity("food"), 0)
         self.assertEqual(citizen.energy, 100.0)
 
 

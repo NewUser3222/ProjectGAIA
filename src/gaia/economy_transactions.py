@@ -181,6 +181,9 @@ class EconomicTransaction:
                 reason="Unit price must be greater than zero."
             )
 
+        unit_price = float(unit_price)
+        quantity = float(quantity)
+
         if seller.get_item_quantity(resource_name) < quantity:
             return TransactionResult(
                 False,
@@ -189,9 +192,6 @@ class EconomicTransaction:
                 quantity=quantity,
                 reason="Seller does not possess enough resources."
             )
-
-        unit_price = float(unit_price)
-        quantity = float(quantity)
         total_cost = unit_price * quantity
         if not math.isfinite(total_cost):
             return TransactionResult(
@@ -230,6 +230,14 @@ class EconomicTransaction:
 
         buyer.change_money(-total_cost)
         seller.change_money(total_cost)
+
+        market_observations = getattr(buyer, "_market_observations", None)
+        if (
+            market_observations is not None
+            and market_observations
+            is getattr(seller, "_market_observations", None)
+        ):
+            market_observations.record_trade(resource_name, quantity)
 
         return TransactionResult(
             True,

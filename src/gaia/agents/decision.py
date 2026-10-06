@@ -75,9 +75,10 @@ class DecisionEngine:
                 if citizen.get_money() <= 0:
                     continue
 
-                from src.gaia.economy import get_resource_value
-
-                food_price = get_resource_value("food")
+                food_price = world.get_market_price(
+                    "food",
+                    supply=seller.get_item_quantity("food"),
+                )
 
                 if citizen.get_money() >= food_price:
                     options.append(

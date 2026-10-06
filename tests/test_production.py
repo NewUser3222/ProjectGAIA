@@ -1,3 +1,7 @@
+import math
+
+import pytest
+
 from src.gaia.business import Business
 from src.gaia.production import ProductionRecipe
 
@@ -132,3 +136,14 @@ def test_invalid_recipe_rejects_nonpositive_quantities():
         assert False
     except ValueError:
         pass
+
+
+def test_recipe_rejects_non_finite_quantities():
+    for quantity in (math.nan, math.inf, -math.inf):
+        with pytest.raises(ValueError):
+            ProductionRecipe(
+                "bad",
+                "Bad Recipe",
+                inputs={"wood": quantity},
+                outputs={"stone": 1},
+            )

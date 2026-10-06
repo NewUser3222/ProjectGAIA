@@ -1,6 +1,9 @@
+import math
+
 from src.gaia.agents.citizen import Citizen
 from src.gaia.building import Building
 from src.gaia.environment import EnvironmentState
+from src.gaia.market import MarketObservations, MarketPricing
 from src.gaia.transportation import TransportationSystem
 
 
@@ -21,6 +24,9 @@ class WorldState:
 
         # Step 73: Create the simulation-owned transportation system.
         self.transportation = TransportationSystem(self)
+
+        # Step 79: Store completed economic activity for market pricing.
+        self.market_observations = MarketObservations()
 
         # Step 4: Create world resources
         self.resources = {
@@ -58,6 +64,7 @@ class WorldState:
             raise TypeError("Only Citizen objects can be added to the world.")
 
         self.citizens.append(citizen)
+        citizen._market_observations = self.market_observations
 
     # Step 61: Building world management
     def add_building(self, building):
@@ -94,11 +101,28 @@ class WorldState:
 
         if business not in self.businesses:
             self.businesses.append(business)
+            business._market_observations = self.market_observations
+
+    # Step 79: Quote resources from current supply and completed market activity.
+    def get_market_price(self, resource_name, supply):
+        recent = self.market_observations.get_recent(resource_name)
+        return MarketPricing.calculate_price(
+            resource_name,
+            supply=supply,
+            recent_consumption=recent["consumption"],
+            recent_production=recent["production"],
+            recent_trade=recent["trade"],
+        )
 
     # Step 60: Remove a business from the world
     def remove_business(self, business):
         if business in self.businesses:
             self.businesses.remove(business)
+            if (
+                getattr(business, "_market_observations", None)
+                is self.market_observations
+            ):
+                business._market_observations = None
 
     # Step 60: Get active businesses
     def get_active_businesses(self):
@@ -217,13 +241,13 @@ class WorldState:
         if resource_name not in self.resources:
             raise ValueError(f"Unknown resource: {resource_name}")
 
-        if quantity <= 0:
-            raise ValueError("Quantity must be greater than zero.")
+        quantity = self._validate_positive_quantity(quantity)
 
         if citizen.get_item_quantity(resource_name) < quantity:
             raise ValueError("Not enough resources in citizen inventory.")
 
         citizen.remove_item(resource_name, quantity)
+        self.market_observations.record_consumption(resource_name, quantity)
 
     # Step 14: Consume a resource and restore a matching citizen need
     def consume_resource_for_need(self, citizen, resource_name, quantity):
@@ -233,8 +257,7 @@ class WorldState:
         if resource_name not in self.resources:
             raise ValueError(f"Unknown resource: {resource_name}")
 
-        if quantity <= 0:
-            raise ValueError("Quantity must be greater than zero.")
+        quantity = self._validate_positive_quantity(quantity)
 
         need_name = resource_name
 
@@ -248,6 +271,17 @@ class WorldState:
 
         citizen.remove_item(resource_name, quantity)
         citizen.change_need(need_name, quantity)
+        self.market_observations.record_consumption(resource_name, quantity)
+
+    @staticmethod
+    def _validate_positive_quantity(quantity):
+        try:
+            quantity = float(quantity)
+        except (TypeError, ValueError, OverflowError):
+            raise ValueError("Quantity must be finite and greater than zero.")
+        if not math.isfinite(quantity) or quantity <= 0:
+            raise ValueError("Quantity must be finite and greater than zero.")
+        return quantity
 
     # Step 76: Regenerate resources using the environment for the current tick.
     def regenerate_resources(self):
@@ -310,6 +344,7 @@ class WorldState:
 
     # Step 16 / Step 72: Advance world time, environment, and resources.
     def advance_tick(self):
+        self.market_observations.advance_tick()
         self.current_tick += 1
         self.environment.advance_tick()
         self.regenerate_resources()

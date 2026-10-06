@@ -230,7 +230,19 @@ class Business:
                 "reason": "Business is not active."
             }
 
-        return ProductionSystem.produce(self.inventory, recipe)
+        result = ProductionSystem.produce(self.inventory, recipe)
+        if result["success"]:
+            market_observations = getattr(self, "_market_observations", None)
+            if market_observations is not None:
+                for resource_name, quantity in recipe.inputs.items():
+                    market_observations.record_consumption(
+                        resource_name, quantity
+                    )
+                for resource_name, quantity in recipe.outputs.items():
+                    market_observations.record_production(
+                        resource_name, quantity
+                    )
+        return result
 
     # Step 57: Employ a citizen into a specific business job
     def employ(self, citizen, job):

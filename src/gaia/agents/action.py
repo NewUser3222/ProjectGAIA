@@ -1,3 +1,6 @@
+import math
+
+
 # Step 1: Define the Action Option
 class ActionOption:
     """Represents a potential action a citizen can evaluate and execute."""
@@ -132,8 +135,14 @@ class ActionExecutor:
             unit_price = action.requirements.get("unit_price")
 
             if unit_price is None:
-                from src.gaia.economy import get_resource_value
-                unit_price = get_resource_value(resource_name)
+                if world is not None and seller is not None:
+                    unit_price = world.get_market_price(
+                        resource_name,
+                        supply=seller.get_item_quantity(resource_name),
+                    )
+                else:
+                    from src.gaia.economy import get_resource_value
+                    unit_price = get_resource_value(resource_name)
 
             from src.gaia.economy_transactions import EconomicTransaction
 
@@ -210,7 +219,11 @@ class ActionExecutor:
                         "reason": "Production resource cannot be empty."
                     }
 
-                if quantity <= 0:
+                try:
+                    quantity = float(quantity)
+                except (TypeError, ValueError, OverflowError):
+                    quantity = math.nan
+                if not math.isfinite(quantity) or quantity <= 0:
                     return {
                         "success": False,
                         "action": "work",
@@ -313,7 +326,22 @@ class ActionExecutor:
                 production = dict(job.production)
 
                 for resource_name, quantity in production.items():
+                    production[resource_name] = float(quantity)
+                for resource_name, quantity in production.items():
                     production_target.add_item(resource_name, quantity)
+
+                market_observations = None
+                if world is not None:
+                    market_observations = world.market_observations
+                else:
+                    market_observations = getattr(
+                        production_target, "_market_observations", None
+                    )
+                if market_observations is not None:
+                    for resource_name, quantity in production.items():
+                        market_observations.record_production(
+                            resource_name, quantity
+                        )
 
             citizen.energy = max(
                 0.0,

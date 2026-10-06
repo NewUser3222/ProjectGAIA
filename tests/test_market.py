@@ -94,6 +94,20 @@ class TestMarketPricing(unittest.TestCase):
                     "food", supply=10, recent_production=value
                 )
 
+    def test_recent_trade_increases_market_demand_pressure(self):
+        price = MarketPricing.calculate_price(
+            "food", supply=100, recent_trade=25
+        )
+
+        self.assertEqual(price, 12.5)
+
+    def test_non_finite_trade_observations_are_rejected(self):
+        for value in (math.nan, math.inf, -math.inf):
+            with self.assertRaises(ValueError):
+                MarketPricing.calculate_price(
+                    "food", supply=10, recent_trade=value
+                )
+
 
 if __name__ == "__main__":
     unittest.main()
