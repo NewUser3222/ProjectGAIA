@@ -156,7 +156,7 @@ def test_successful_citizen_trade_and_consumption_change_world_quote():
     assert recent["trade"] == 1
     assert recent["consumption"] == 1
     assert recent["sales"] == 1
-    assert simulation.world.get_market_price("food", supply=4) == 15
+    assert simulation.world.get_market_price("food", supply=4) == 12.5
 
 
 def test_business_commerce_records_trades_used_by_later_quotes():

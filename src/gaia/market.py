@@ -52,10 +52,13 @@ class MarketPricing:
 
         # Step 54: Compare actual consumption and trades with available supply.
         # Higher observed demand relative to supply increases price.
+        # A traded unit may be consumed later; without lot tracking, count the
+        # stronger observed signal rather than treating it as two units.
+        observed_demand = max(recent_consumption, recent_trade)
         demand_pressure = 0.0
         if supply > 0:
-            demand_pressure = (recent_consumption + recent_trade) / supply
-        elif recent_consumption > 0 or recent_trade > 0:
+            demand_pressure = observed_demand / supply
+        elif observed_demand > 0:
             demand_pressure = 1.0
 
         # Step 54: Recent production provides downward pressure on price.

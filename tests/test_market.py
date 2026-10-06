@@ -101,6 +101,16 @@ class TestMarketPricing(unittest.TestCase):
 
         self.assertEqual(price, 12.5)
 
+    def test_trade_and_consumption_of_same_quantity_are_not_double_counted(self):
+        price = MarketPricing.calculate_price(
+            "food",
+            supply=4,
+            recent_consumption=1,
+            recent_trade=1,
+        )
+
+        self.assertEqual(price, 12.5)
+
     def test_non_finite_trade_observations_are_rejected(self):
         for value in (math.nan, math.inf, -math.inf):
             with self.assertRaises(ValueError):

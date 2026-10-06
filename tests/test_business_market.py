@@ -423,3 +423,36 @@ def test_business_cannot_spend_cash_reserved_for_selected_worker_wage():
     assert purchase["success"] is False
     assert business.get_item_quantity("wood") == 1
     assert supplier.get_item_quantity("wood") == 1
+
+
+def test_completed_business_sale_drives_production_on_the_following_tick():
+    simulation = Simulation()
+    business = Business("foodworks", "Foodworks")
+    worker = Citizen("worker", "Worker", age=30)
+    buyer = Citizen("buyer", "Buyer", age=30)
+    buyer.change_money(20)
+    buyer.hunger = 80
+    buyer.needs["hunger"] = 80
+    business.add_recipe(
+        ProductionRecipe("food", "Grow Food", outputs={"food": 1})
+    )
+    job = Job("farmer", "Farmer", recipe_id="food")
+    business.add_job(job)
+    business.employ(worker, job)
+    simulation.add_citizen(worker)
+    simulation.add_citizen(buyer)
+    simulation.add_business(business)
+    simulation.world.environment.day = 270
+    simulation.start()
+
+    simulation.step()
+
+    assert business.get_item_quantity("food") == 0
+    assert buyer.get_item_quantity("food") == 1
+    assert simulation.world.market_observations.get_demand_rate("food") == 0
+    assert simulation.world.market_observations.to_dict()["current"]["sales"]["food"] == 1
+
+    simulation.step()
+
+    assert business.get_item_quantity("food") == 1
+    assert simulation.world.market_observations.get_demand_rate("food") == 0.5
